@@ -77,7 +77,11 @@ const cleanupOldFiles = async (): Promise<void> => {
     }
 };
 
-setInterval(cleanupOldFiles, 30 * 60 * 1000);
+const cleanupInterval = setInterval(cleanupOldFiles, 30 * 60 * 1000);
+
+export const cleanupIntervals = () => {
+    clearInterval(cleanupInterval);
+};
 
 export function createRoutes(parserService: ParserService): Router {
     const router = Router();

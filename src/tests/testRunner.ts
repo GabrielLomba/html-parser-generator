@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as cheerio from 'cheerio';
 import express from 'express';
 import FormData from 'form-data';
-import { createRoutes } from '../api/routes';
+import { createRoutes, cleanupIntervals } from '../api/routes';
 import { ParserService } from '../services/parserService';
 import { DiskParserStorage } from '../storage/diskParserStorage';
 import { TestConfig, TestResult, TestSuite, TestSuiteResult } from './types';
@@ -41,22 +41,16 @@ export class TestRunner {
             return new Promise((resolve) => {
                 this.server.close(() => {
                     console.log('Test server stopped');
+                    cleanupIntervals();
                     resolve();
                 });
             });
         }
     }
 
-    private async loadExpectedValues(testDir: string): Promise<any> {
-        const expectedPath = path.join(testDir, 'expected.json');
-        const data = await fs.promises.readFile(expectedPath, 'utf8');
-        return JSON.parse(data);
-    }
-
     private async loadTestConfig(testDir: string): Promise<TestConfig> {
-        const configPath = path.join(testDir, 'config.json');
-        const data = await fs.promises.readFile(configPath, 'utf8');
-        return JSON.parse(data);
+        const configPath = path.join(testDir, 'config.js');
+        return require(configPath).default;
     }
 
     private async discoverTestDirectories(): Promise<string[]> {
@@ -66,15 +60,13 @@ export class TestRunner {
         for (const entry of entries) {
             if (entry.isDirectory()) {
                 const testDir = path.join(this.testDataDir, entry.name);
-                const configPath = path.join(testDir, 'config.json');
-                const expectedPath = path.join(testDir, 'expected.json');
+                const configPath = path.join(testDir, 'config.js');
                 
                 try {
                     await fs.promises.access(configPath);
-                    await fs.promises.access(expectedPath);
                     testDirs.push(testDir);
                 } catch {
-                    console.warn(`Skipping ${entry.name}: missing config.json or expected.json`);
+                    console.warn(`Skipping ${entry.name}: missing config.js`);
                 }
             }
         }
@@ -127,15 +119,11 @@ export class TestRunner {
             const parseResponse = response.data;
             const actual = parseResponse.result;
 
-            const expected = await this.loadExpectedValues(testDir);
-
-            const passed = JSON.stringify(actual) === JSON.stringify(expected);
+            testConfig.verify(actual);
 
             return {
                 testName: testConfig.testName,
                 url: testConfig.url,
-                passed,
-                expected,
                 actual,
                 parser: parseResponse.parser || '',
                 urlPattern: parseResponse.urlPattern || ''
@@ -144,8 +132,6 @@ export class TestRunner {
             return {
                 testName: testConfig.testName,
                 url: testConfig.url,
-                passed: false,
-                expected: null,
                 actual: null,
                 error: error instanceof Error ? error.message : 'Unknown error',
                 parser: '',
@@ -167,7 +153,7 @@ export class TestRunner {
                 results.push(result);
             }
 
-            const passedTests = results.filter(r => r.passed).length;
+            const passedTests = results.filter(r => !r.error).length;
             const failedTests = results.length - passedTests;
 
             return {
@@ -193,7 +179,7 @@ export class TestRunner {
             results.push(result);
         }
 
-        const passedTests = results.filter(r => r.passed).length;
+        const passedTests = results.filter(r => !r.error).length;
         const failedTests = results.length - passedTests;
 
         return {

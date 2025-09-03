@@ -20,17 +20,12 @@ async function runTests() {
         console.log(`Success Rate: ${result.totalTests > 0 ? ((result.passedTests / result.totalTests) * 100).toFixed(1) : 0}%\n`);
 
         for (const testResult of result.results) {
-            const status = testResult.passed ? '✅ PASS' : '❌ FAIL';
+            const status = testResult.error ? '❌ FAIL' : '✅ PASS';
             console.log(`${status} - ${testResult.testName}`);
             console.log(`   URL: ${testResult.url}`);
             
-            if (!testResult.passed) {
-                if (testResult.error) {
-                    console.log(`   Error: ${testResult.error}`);
-                } else {
-                    console.log(`   Expected: ${JSON.stringify(testResult.expected, null, 2)}`);
-                    console.log(`   Actual: ${JSON.stringify(testResult.actual, null, 2)}`);
-                }
+            if (testResult.error) {
+                console.log(`   Error: ${testResult.error}`);
             }
             console.log('');
         }

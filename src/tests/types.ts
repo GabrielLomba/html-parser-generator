@@ -1,13 +1,12 @@
 export interface TestConfig {
     url: string;
     testName: string;
+    verify: (actual: any) => boolean;
 }
 
 export interface TestResult {
     testName: string;
     url: string;
-    passed: boolean;
-    expected: any;
     actual: any;
     error?: string;
     parser: string;
