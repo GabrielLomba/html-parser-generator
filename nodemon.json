@@ -1,0 +1,22 @@
+{
+    "watch": [
+        "src/**/*",
+        "*.json",
+        "*.js"
+    ],
+    "ext": "ts,js,json",
+    "ignore": [
+        "node_modules/**/*",
+        "dist/**/*",
+        "tmp/**/*",
+        "*.log"
+    ],
+    "exec": "ts-node src/index.ts",
+    "env": {
+        "NODE_ENV": "development"
+    },
+    "delay": 1000,
+    "verbose": true,
+    "restartable": "rs",
+    "colours": true
+}
