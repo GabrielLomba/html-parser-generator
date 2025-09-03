@@ -7,6 +7,7 @@ import { createRoutes } from '../api/routes';
 import { ParserService } from '../services/parserService';
 import { DiskParserStorage } from '../storage/diskParserStorage';
 import { TestConfig, TestResult, TestSuite, TestSuiteResult } from './types';
+import { IncomingMessage } from 'http';
 
 export class TestRunner {
     private app: express.Application;
@@ -91,18 +92,39 @@ export class TestRunner {
                 contentType: 'text/html',
             });
 
-            const response = await fetch(`${this.baseUrl}/api/parse`, {
-                method: 'POST',
-                body: form,
-                headers: form.getHeaders()
+            const response = await new Promise<any>((resolve, reject) => {
+                form.submit(`${this.baseUrl}/api/parse`, (err, res) => {
+                    if (err) {
+                        reject(err);
+                        return;
+                    }
+                    
+                    let data = '';
+                    res.on('data', (chunk) => {
+                        data += chunk;
+                    });
+                    
+                    res.on('end', () => {
+                        try {
+                            const parseResponse = JSON.parse(data);
+                            resolve({ ...res, data: parseResponse });
+                        } catch (parseErr) {
+                            reject(new Error(`Failed to parse response: ${parseErr}`));
+                        }
+                    });
+                    
+                    res.on('error', (streamErr) => {
+                        reject(streamErr);
+                    });
+                });
             });
 
-            if (!response.ok) {
-                console.log(`Body: ${await response.text()}`);
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            if (response.statusCode !== 200) {
+                console.log(`Body: ${response.data}`);
+                throw new Error(`HTTP ${response.statusCode}: ${response.statusMessage}`);
             }
 
-            const parseResponse = await response.json() as any;
+            const parseResponse = response.data;
             const actual = parseResponse.result;
 
             const expected = await this.loadExpectedValues(testDir);
