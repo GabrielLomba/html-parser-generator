@@ -11,12 +11,13 @@ export class InMemoryParserStorage implements ParserStorage {
         return this.parsers.get(urlPattern) || null;
     }
 
-    async set(urlPattern: string, parser: string): Promise<void> {
+    async set(urlPattern: string, parser: string): Promise<StoredParser> {
         this.parsers.set(urlPattern, {
             urlPattern,
             parser,
             createdAt: new Date()
         });
+        return this.parsers.get(urlPattern)!;
     }
 
     async has(urlPattern: string): Promise<boolean> {

@@ -1,6 +1,5 @@
 export interface TestConfig {
     url: string;
-    html: string;
     testName: string;
 }
 

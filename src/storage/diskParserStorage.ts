@@ -56,7 +56,7 @@ export class DiskParserStorage implements ParserStorage {
         }
     }
 
-    async set(urlPattern: string, parser: string): Promise<void> {
+    async set(urlPattern: string, parser: string): Promise<StoredParser> {
         try {
             const parserData: StoredParser = {
                 urlPattern,
@@ -68,6 +68,7 @@ export class DiskParserStorage implements ParserStorage {
             const fileData = JSON.stringify(parserData, null, 2);
             
             await fsPromises.writeFile(filePath, fileData, 'utf8');
+            return parserData;
         } catch (error) {
             console.error(`Failed to save parser for pattern ${urlPattern}:`, error);
             throw new Error(`Cannot save parser: ${error instanceof Error ? error.message : 'Unknown error'}`);

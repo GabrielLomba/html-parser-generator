@@ -24,18 +24,20 @@ export class ParserService {
         if (existingParser) {
             return {
                 parser: existingParser.parser,
+                createdAt: existingParser.createdAt,
                 cached: true,
-                urlPattern
+                urlPattern,
             };
         }
 
         try {
             const parserCode = await this.openaiService.generateParser(url, html);
 
-            await this.storage.set(urlPattern, parserCode);
+            const parser = await this.storage.set(urlPattern, parserCode);
 
             return {
-                parser: parserCode,
+                parser: parser.parser,
+                createdAt: parser.createdAt,
                 cached: false,
                 urlPattern,
             };

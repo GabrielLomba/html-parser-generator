@@ -25,9 +25,6 @@ export function extractRelevantText(html: string): string {
     return text;
 }
 
-/**
- * Generates a URL pattern for caching based on the URL structure
- */
 export function generateUrlPattern(url: string): string {
     try {
         const urlObj = new URL(url);

@@ -1,4 +1,4 @@
-import { createTestRunner } from './index';
+import { TestRunner } from './testRunner';
 
 async function runTests() {
     const openaiApiKey = process.env.OPENAI_API_KEY;
@@ -10,7 +10,7 @@ async function runTests() {
     console.log('Running ground truth tests...\n');
 
     try {
-        const testRunner = createTestRunner(openaiApiKey);
+        const testRunner = new TestRunner(openaiApiKey);
         const result = await testRunner.runAllTests();
 
         console.log(`\nTest Results:`);

@@ -1,7 +1,10 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { ParserService } from '../services/parserService';
-import { ParserRequest } from '../types';
+
 import * as cheerio from 'cheerio';
+import multer from 'multer';
+import * as fs from 'fs';
+import * as path from 'path';
 
 const asyncHandler = (fn: (req: Request, res: Response, next: NextFunction) => Promise<any>) => {
     return (req: Request, res: Response, next: NextFunction) => {
@@ -14,6 +17,68 @@ const asyncHandler = (fn: (req: Request, res: Response, next: NextFunction) => P
     };
 };
 
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        const uploadDir = path.join(process.cwd(), 'tmp', 'uploads');
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        cb(null, uploadDir);
+    },
+    filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, `html-${uniqueSuffix}.html`);
+    }
+});
+
+const upload = multer({ 
+    storage,
+    limits: {
+        fileSize: 100 * 1024 * 1024,
+        files: 1,
+    },
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype === 'text/html' || file.mimetype === 'text/plain' || file.mimetype.startsWith('text/')) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only HTML/text files are allowed'));
+        }
+    }
+});
+
+const cleanupFile = async (filePath: string): Promise<void> => {
+    try {
+        await fs.promises.unlink(filePath);
+    } catch (error) {
+        console.warn(`Failed to cleanup file ${filePath}:`, error);
+    }
+};
+
+const cleanupOldFiles = async (): Promise<void> => {
+    const uploadDir = path.join(process.cwd(), 'tmp', 'uploads');
+    try {
+        if (!fs.existsSync(uploadDir)) return;
+        
+        const files = await fs.promises.readdir(uploadDir);
+        const now = Date.now();
+        const oneHour = 60 * 60 * 1000;
+        
+        for (const file of files) {
+            const filePath = path.join(uploadDir, file);
+            const stats = await fs.promises.stat(filePath);
+            
+            if (now - stats.mtime.getTime() > oneHour) {
+                await cleanupFile(filePath);
+                console.log(`Cleaned up old temporary file: ${file}`);
+            }
+        }
+    } catch (error) {
+        console.warn('Failed to cleanup old files:', error);
+    }
+};
+
+setInterval(cleanupOldFiles, 30 * 60 * 1000);
+
 export function createRoutes(parserService: ParserService): Router {
     const router = Router();
 
@@ -21,17 +86,40 @@ export function createRoutes(parserService: ParserService): Router {
         res.json({ status: 'healthy', timestamp: new Date().toISOString() });
     });
 
-    router.post('/getParser', asyncHandler(async (req: Request, res: Response) => {
-        const { url, html } = req.body as ParserRequest;
+    router.post('/parse', upload.single('html'), asyncHandler(async (req: Request, res: Response) => {
+        const { url } = req.body;
+        const file = req.file;
 
-        if (!url || !html) {
+        if (!url || !file) {
+            if (file) {
+                await cleanupFile(file.path);
+            }
             return res.status(400).json({
-                error: 'Missing required fields: url and html are required'
+                error: 'Missing required fields: url and html file are required'
             });
         }
 
-        const result = await parserService.getParser({ url, html });
-        res.json(result);
+        try {
+            const html = await fs.promises.readFile(file.path, 'utf8');
+            
+            const parser = await parserService.getParser({ url, html });
+
+            const parserFunction = new Function('$', parser.parser);
+            const result = parserFunction(cheerio.load(html));
+
+            await cleanupFile(file.path);
+
+            res.json({
+                result,
+                parserCreatedAt: parser.createdAt,
+                urlPattern: parser.urlPattern,
+                cached: parser.cached,
+                fileSize: file.size
+            });
+        } catch (error) {
+            await cleanupFile(file.path);
+            throw error;
+        }
     }));
 
     router.get('/stats', asyncHandler(async (req: Request, res: Response) => {
