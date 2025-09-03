@@ -1,7 +1,18 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { ParserService } from '../services/parserService';
 import { ParserRequest } from '../types';
 import * as cheerio from 'cheerio';
+
+const asyncHandler = (fn: (req: Request, res: Response, next: NextFunction) => Promise<any>) => {
+    return (req: Request, res: Response, next: NextFunction) => {
+        Promise.resolve(fn(req, res, next)).catch((error) => {
+            console.error('Error in route handler:', error);
+            res.status(500).json({
+                error: error instanceof Error ? error.message : 'Internal server error'
+            });
+        });
+    };
+};
 
 export function createRoutes(parserService: ParserService): Router {
     const router = Router();
@@ -10,92 +21,64 @@ export function createRoutes(parserService: ParserService): Router {
         res.json({ status: 'healthy', timestamp: new Date().toISOString() });
     });
 
-    router.post('/getParser', async (req: Request, res: Response) => {
-        try {
-            const { url, html } = req.body as ParserRequest;
+    router.post('/getParser', asyncHandler(async (req: Request, res: Response) => {
+        const { url, html } = req.body as ParserRequest;
 
-            if (!url || !html) {
-                return res.status(400).json({
-                    error: 'Missing required fields: url and html are required'
-                });
-            }
-
-            const result = await parserService.getParser({ url, html });
-            res.json(result);
-        } catch (error) {
-            console.error('Error in getParser endpoint:', error);
-            res.status(500).json({
-                error: error instanceof Error ? error.message : 'Internal server error'
+        if (!url || !html) {
+            return res.status(400).json({
+                error: 'Missing required fields: url and html are required'
             });
         }
-    });
 
-    router.get('/stats', async (req: Request, res: Response) => {
-        try {
-            const stats = await parserService.getStats();
-            res.json(stats);
-        } catch (error) {
-            console.error('Error in stats endpoint:', error);
-            res.status(500).json({
-                error: error instanceof Error ? error.message : 'Internal server error'
+        const result = await parserService.getParser({ url, html });
+        res.json(result);
+    }));
+
+    router.get('/stats', asyncHandler(async (req: Request, res: Response) => {
+        const stats = await parserService.getStats();
+        res.json(stats);
+    }));
+
+    router.delete('/parser/:urlPattern', asyncHandler(async (req: Request, res: Response) => {
+        const { urlPattern } = req.params;
+        const removed = await parserService.deleteParser(decodeURIComponent(urlPattern));
+        
+        if (removed) {
+            res.json({ message: 'Parser deleted successfully', urlPattern });
+        } else {
+            res.status(404).json({ error: 'Parser not found', urlPattern });
+        }
+    }));
+
+    router.post('/testParser', asyncHandler(async (req: Request, res: Response) => {
+        const { url, html, testHtml } = req.body;
+
+        if (!url || !html || !testHtml) {
+            return res.status(400).json({
+                error: 'Missing required fields: url, html, and testHtml are required'
             });
         }
-    });
 
-    router.delete('/parser/:urlPattern', async (req: Request, res: Response) => {
+        const parserResult = await parserService.getParser({ url, html });
+        
         try {
-            const { urlPattern } = req.params;
-            const removed = await parserService.deleteParser(decodeURIComponent(urlPattern));
+            const parserFunction = new Function('$', parserResult.parser);
+            const result = parserFunction(cheerio.load(testHtml));
             
-            if (removed) {
-                res.json({ message: 'Parser deleted successfully', urlPattern });
-            } else {
-                res.status(404).json({ error: 'Parser not found', urlPattern });
-            }
-        } catch (error) {
-            console.error('Error in delete parser endpoint:', error);
-            res.status(500).json({
-                error: error instanceof Error ? error.message : 'Internal server error'
+            res.json({
+                parser: parserResult.parser,
+                testResult: result,
+                urlPattern: parserResult.urlPattern,
+                cached: parserResult.cached
+            });
+        } catch (parseError) {
+            res.status(400).json({
+                error: 'Parser execution failed',
+                parser: parserResult.parser,
+                parseError: parseError instanceof Error ? parseError.message : 'Unknown error'
             });
         }
-    });
-
-    router.post('/testParser', async (req: Request, res: Response) => {
-        try {
-            const { url, html, testHtml } = req.body;
-
-            if (!url || !html || !testHtml) {
-                return res.status(400).json({
-                    error: 'Missing required fields: url, html, and testHtml are required'
-                });
-            }
-
-            const parserResult = await parserService.getParser({ url, html });
-            
-            try {
-                const parserFunction = new Function('$', parserResult.parser);
-                const result = parserFunction(cheerio.load(testHtml));
-                
-                res.json({
-                    parser: parserResult.parser,
-                    testResult: result,
-                    urlPattern: parserResult.urlPattern,
-                    cached: parserResult.cached
-                });
-            } catch (parseError) {
-                res.status(400).json({
-                    error: 'Parser execution failed',
-                    parser: parserResult.parser,
-                    parseError: parseError instanceof Error ? parseError.message : 'Unknown error'
-                });
-            }
-        } catch (error) {
-            console.error('Error in testParser endpoint:', error);
-            res.status(500).json({
-                error: error instanceof Error ? error.message : 'Internal server error'
-            });
-        }
-    });
+    }));
 
     return router;
 }
