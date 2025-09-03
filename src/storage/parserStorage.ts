@@ -7,11 +7,11 @@ import { StoredParser, ParserStorage } from '../types';
 export class InMemoryParserStorage implements ParserStorage {
     private parsers: Map<string, StoredParser> = new Map();
 
-    get(urlPattern: string): StoredParser | null {
+    async get(urlPattern: string): Promise<StoredParser | null> {
         return this.parsers.get(urlPattern) || null;
     }
 
-    set(urlPattern: string, parser: string): void {
+    async set(urlPattern: string, parser: string): Promise<void> {
         this.parsers.set(urlPattern, {
             urlPattern,
             parser,
@@ -19,12 +19,16 @@ export class InMemoryParserStorage implements ParserStorage {
         });
     }
 
-    has(urlPattern: string): boolean {
+    async has(urlPattern: string): Promise<boolean> {
         return this.parsers.has(urlPattern);
     }
 
-    getAll(): StoredParser[] {
+    async getAll(): Promise<StoredParser[]> {
         return Array.from(this.parsers.values());
+    }
+
+    async delete(urlPattern: string): Promise<boolean> {
+        return this.parsers.delete(urlPattern);
     }
 
     clear(): void {

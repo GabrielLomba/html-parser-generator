@@ -30,9 +30,9 @@ export function createRoutes(parserService: ParserService): Router {
         }
     });
 
-    router.get('/stats', (req: Request, res: Response) => {
+    router.get('/stats', async (req: Request, res: Response) => {
         try {
-            const stats = parserService.getStats();
+            const stats = await parserService.getStats();
             res.json(stats);
         } catch (error) {
             console.error('Error in stats endpoint:', error);
@@ -42,20 +42,15 @@ export function createRoutes(parserService: ParserService): Router {
         }
     });
 
-    router.delete('/parser/:urlPattern', (req: Request, res: Response) => {
+    router.delete('/parser/:urlPattern', async (req: Request, res: Response) => {
         try {
             const { urlPattern } = req.params;
-            const storage = (parserService as any).storage;
+            const removed = await parserService.deleteParser(decodeURIComponent(urlPattern));
             
-            if (storage && typeof storage.remove === 'function') {
-                const removed = storage.remove(decodeURIComponent(urlPattern));
-                if (removed) {
-                    res.json({ message: 'Parser deleted successfully', urlPattern });
-                } else {
-                    res.status(404).json({ error: 'Parser not found', urlPattern });
-                }
+            if (removed) {
+                res.json({ message: 'Parser deleted successfully', urlPattern });
             } else {
-                res.status(400).json({ error: 'Delete operation not supported for this storage type' });
+                res.status(404).json({ error: 'Parser not found', urlPattern });
             }
         } catch (error) {
             console.error('Error in delete parser endpoint:', error);

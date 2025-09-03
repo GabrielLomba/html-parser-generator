@@ -16,8 +16,9 @@ export interface StoredParser {
 }
 
 export interface ParserStorage {
-    get(urlPattern: string): StoredParser | null;
-    set(urlPattern: string, parser: string): void;
-    has(urlPattern: string): boolean;
-    getAll(): StoredParser[];
+    get(urlPattern: string): Promise<StoredParser | null>;
+    set(urlPattern: string, parser: string): Promise<void>;
+    has(urlPattern: string): Promise<boolean>;
+    getAll(): Promise<StoredParser[]>;
+    delete(urlPattern: string): Promise<boolean>;
 }

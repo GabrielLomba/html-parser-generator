@@ -20,7 +20,7 @@ export class ParserService {
 
         const urlPattern = generateUrlPattern(url);
 
-        const existingParser = this.storage.get(urlPattern);
+        const existingParser = await this.storage.get(urlPattern);
         if (existingParser) {
             return {
                 parser: existingParser.parser,
@@ -32,7 +32,7 @@ export class ParserService {
         try {
             const parserCode = await this.openaiService.generateParser(url, html);
 
-            this.storage.set(urlPattern, parserCode);
+            await this.storage.set(urlPattern, parserCode);
 
             return {
                 parser: parserCode,
@@ -45,8 +45,12 @@ export class ParserService {
         }
     }
 
-    getStats() {
-        const allParsers = this.storage.getAll();
+    async deleteParser(urlPattern: string): Promise<boolean> {
+        return await this.storage.delete(urlPattern);
+    }
+
+    async getStats() {
+        const allParsers = await this.storage.getAll();
         return {
             totalParsers: allParsers.length,
             parsers: allParsers.map(p => ({
