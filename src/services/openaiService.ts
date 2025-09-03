@@ -43,7 +43,7 @@ export class OpenAIService {
 
     private createParserPrompt(url: string, htmlText: string): string {
         return `
-Create a JavaScript/TypeScript function that parses HTML content from the following URL pattern and extracts relevant text content.
+Create a JavaScript function that parses HTML content from the following URL pattern and extracts relevant text content.
 
 URL: ${url}
 
@@ -51,31 +51,44 @@ Sample HTML content (first 2000 characters):
 ${htmlText.substring(0, 2000)}
 
 Requirements:
-1. The function should be named 'parseHtml' and accept an HTML string as input
+1. The function should be named 'parseHtml' and accept a $ argument which is equivalent to cheerio.load(html).
 2. Extract only relevant text content, ignoring navigation, ads, scripts, styles, and other non-content elements
+3. Use selectors as specific as possible to retrieve the most relevant text content, excluding irrelevant text content next to it
 3. Return a clean object with extracted data
-4. Use modern JavaScript/TypeScript syntax
-5. Include proper error handling
-6. The function should be self-contained and not require external dependencies beyond basic DOM parsing
+4. Use modern JavaScript syntax
+5. Include proper error handling but do not swallow errors. If the parser encountered something unexpected, throw an error.
+6. The function should be self-contained and not require external dependencies beyond the cheerio instance passed in as a parameter.
 
-Return only the function code, no explanations or markdown formatting.
+Return only the function code, no explanations or markdown formatting. No comments at all. Only the function definition matters.
         `.trim();
     }
 
     private sanitizeParserCode(code: string): string {
-        // Remove markdown code blocks if present
-        let sanitized = code.replace(/```[\s\S]*?```/g, (match) => {
-            return match.replace(/```(?:javascript|typescript|js|ts)?\n?/, '').replace(/```$/, '');
-        });
+        const codeBlockRegex = /```(?:javascript|js|typescript|ts)?\s*\n([\s\S]*?)\n```/;
+        const match = code.match(codeBlockRegex);
 
-        // Remove any remaining markdown formatting
-        sanitized = sanitized.replace(/^```.*$/gm, '').trim();
-
-        // Ensure the function is properly formatted
-        if (!sanitized.includes('function') && !sanitized.includes('=>')) {
-            sanitized = `function parseHtml(html) {\n    ${sanitized}\n}`;
+        let runnableFunction = match && match[1] ? match[1].trim() : code.trim();
+        
+        if (runnableFunction.startsWith('function')) {
+            const functionBodyRegex = /function\s+\w+\s*\([^)]*\)\s*\{([\s\S]*)\}/;
+            const bodyMatch = runnableFunction.match(functionBodyRegex);
+            
+            if (bodyMatch && bodyMatch[1]) {
+                // Return the function body content
+                return bodyMatch[1].trim();
+            }
+        }
+        
+        // Handle arrow functions
+        if (runnableFunction.includes('=>')) {
+            const arrowFunctionRegex = /(?:const|let|var)?\s*\w+\s*=\s*\([^)]*\)\s*=>\s*\{([\s\S]*)\}/;
+            const arrowMatch = runnableFunction.match(arrowFunctionRegex);
+            
+            if (arrowMatch && arrowMatch[1]) {
+                return arrowMatch[1].trim();
+            }
         }
 
-        return sanitized;
+        return runnableFunction;
     }
 }

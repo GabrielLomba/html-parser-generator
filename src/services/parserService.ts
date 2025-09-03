@@ -1,6 +1,6 @@
 import { ParserRequest, ParserResponse, ParserStorage } from '../types';
 import { OpenAIService } from './openaiService';
-import { extractRelevantText, generateUrlPattern } from '../utils/htmlExtractor';
+import { generateUrlPattern } from '../utils/htmlExtractor';
 
 export class ParserService {
     private openaiService: OpenAIService;
@@ -14,15 +14,12 @@ export class ParserService {
     async getParser(request: ParserRequest): Promise<ParserResponse> {
         const { url, html } = request;
 
-        // Validate inputs
         if (!url || !html) {
             throw new Error('URL and HTML are required');
         }
 
-        // Generate URL pattern for caching
         const urlPattern = generateUrlPattern(url);
 
-        // Check if we already have a parser for this URL pattern
         const existingParser = this.storage.get(urlPattern);
         if (existingParser) {
             return {
@@ -32,25 +29,15 @@ export class ParserService {
             };
         }
 
-        // Extract relevant text from HTML
-        // const relevantText = extractRelevantText(html);
-
-        // console.log('relevantText: ', relevantText);
-        // if (!relevantText || relevantText.trim().length < 50) {
-        //     throw new Error('Insufficient relevant text content found in HTML');
-        // }
-
         try {
-            // Generate new parser using OpenAI
             const parserCode = await this.openaiService.generateParser(url, html);
 
-            // Store the parser for future use
             this.storage.set(urlPattern, parserCode);
 
             return {
                 parser: parserCode,
                 cached: false,
-                urlPattern
+                urlPattern,
             };
         } catch (error) {
             console.error('Error generating parser:', error);
@@ -58,9 +45,6 @@ export class ParserService {
         }
     }
 
-    /**
-     * Get statistics about stored parsers
-     */
     getStats() {
         const allParsers = this.storage.getAll();
         return {

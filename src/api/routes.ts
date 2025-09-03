@@ -1,16 +1,15 @@
 import { Router, Request, Response } from 'express';
 import { ParserService } from '../services/parserService';
 import { ParserRequest } from '../types';
+import * as cheerio from 'cheerio';
 
 export function createRoutes(parserService: ParserService): Router {
     const router = Router();
 
-    // Health check endpoint
     router.get('/health', (req: Request, res: Response) => {
         res.json({ status: 'healthy', timestamp: new Date().toISOString() });
     });
 
-    // Get parser endpoint
     router.post('/getParser', async (req: Request, res: Response) => {
         try {
             const { url, html } = req.body as ParserRequest;
@@ -31,7 +30,6 @@ export function createRoutes(parserService: ParserService): Router {
         }
     });
 
-    // Get statistics endpoint
     router.get('/stats', (req: Request, res: Response) => {
         try {
             const stats = parserService.getStats();
@@ -44,25 +42,6 @@ export function createRoutes(parserService: ParserService): Router {
         }
     });
 
-    // Get storage statistics endpoint
-    router.get('/storage-stats', (req: Request, res: Response) => {
-        try {
-            const storage = (parserService as any).storage;
-            if (storage && typeof storage.getStorageStats === 'function') {
-                const storageStats = storage.getStorageStats();
-                res.json(storageStats);
-            } else {
-                res.json({ message: 'Storage statistics not available for this storage type' });
-            }
-        } catch (error) {
-            console.error('Error in storage-stats endpoint:', error);
-            res.status(500).json({
-                error: error instanceof Error ? error.message : 'Internal server error'
-            });
-        }
-    });
-
-    // Delete parser endpoint
     router.delete('/parser/:urlPattern', (req: Request, res: Response) => {
         try {
             const { urlPattern } = req.params;
@@ -86,7 +65,6 @@ export function createRoutes(parserService: ParserService): Router {
         }
     });
 
-    // Test parser endpoint (for development)
     router.post('/testParser', async (req: Request, res: Response) => {
         try {
             const { url, html, testHtml } = req.body;
@@ -97,14 +75,11 @@ export function createRoutes(parserService: ParserService): Router {
                 });
             }
 
-            // Get the parser
             const parserResult = await parserService.getParser({ url, html });
             
-            // Test the parser with the provided test HTML
             try {
-                // Create a function from the parser code
-                const parserFunction = new Function('html', parserResult.parser);
-                const result = parserFunction(testHtml);
+                const parserFunction = new Function('$', parserResult.parser);
+                const result = parserFunction(cheerio.load(testHtml));
                 
                 res.json({
                     parser: parserResult.parser,
