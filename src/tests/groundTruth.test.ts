@@ -5,7 +5,7 @@ import express from 'express';
 import { createRoutes } from '../api/routes';
 import { ParserService } from '../services/parserService';
 import { DiskParserStorage } from '../storage/diskParserStorage';
-import { OpenAIService } from '../generator/openaiService';
+import { OpenAIService } from '../generator/openaiParserGenerator';
 import { ParseResponse, TestConfig, TestResult } from './types';
 import { logger } from '../utils/logger';
 import { Server } from 'http';

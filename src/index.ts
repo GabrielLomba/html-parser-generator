@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 import * as path from 'path';
 import { ParserService } from './services/parserService';
 import { DiskParserStorage } from './storage/diskParserStorage';
-import { OpenAIService } from './generator/openaiService';
+import { OpenAIService } from './generator/openaiParserGenerator';
 import { createRoutes } from './api/routes';
 import { ApiError } from './types/ApiError';
 import { logger, getErrorInfo } from './utils/logger';
