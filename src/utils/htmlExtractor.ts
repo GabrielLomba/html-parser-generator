@@ -220,7 +220,7 @@ export async function preprocessHtmlForOpenAI(htmlText: string): Promise<string>
         mainContent = $('body');
     }
 
-    let sampleHtml = mainContent.html()?.substring(0, 3000) || htmlText.substring(0, 3000);
+    let sampleHtml = mainContent.html() || htmlText;
     try {
         sampleHtml = await minify(sampleHtml, {
             collapseWhitespace: true,
@@ -237,7 +237,7 @@ export async function preprocessHtmlForOpenAI(htmlText: string): Promise<string>
         logger.error('Error minifying HTML:', getErrorInfo(error));
     }
 
-    return `Structure: ${JSON.stringify(structure, null, 2)}\n\nSample HTML (main content area):\n${sampleHtml}`;
+    return `Structure: ${JSON.stringify(structure, null, 2)}\n\nSample HTML (main content area):\n${sampleHtml.substring(0, 3000)}`;
 }
 
 function extractMainContent($: cheerio.CheerioAPI): string {
