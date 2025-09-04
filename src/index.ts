@@ -30,34 +30,34 @@ const parserService = new ParserService(openaiApiKey, storage);
 app.use('/api', createRoutes(parserService));
 
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
-    logger.error('Unhandled error:', { 
+    logger.error('Unhandled error:', {
         ...getErrorInfo(err),
         url: req.url,
-        method: req.method
+        method: req.method,
     });
-    
+
     if (err instanceof ApiError) {
         return res.status(err.statusCode).json(err.payload);
     }
-    
+
     res.status(500).json({
         error: 'Internal server error',
-        message: err.message
+        message: err.message,
     });
 });
 
 app.use('*', (req, res) => {
     res.status(404).json({
         error: 'Endpoint not found',
-        path: req.originalUrl
+        path: req.originalUrl,
     });
 });
 
 app.listen(port, () => {
-    logger.info('HTML Parser Generator Microservice started', { 
+    logger.info('HTML Parser Generator Microservice started', {
         port,
         healthCheck: `http://localhost:${port}/api/health`,
-        documentation: `http://localhost:${port}/`
+        documentation: `http://localhost:${port}/`,
     });
 });
 
