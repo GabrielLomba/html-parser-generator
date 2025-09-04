@@ -1,4 +1,5 @@
 import * as cheerio from 'cheerio';
+import { minify } from 'html-minifier-terser';
 import { getErrorInfo, logger } from './logger';
 
 const normalizeUrl = (url: string): string => {
@@ -156,7 +157,7 @@ export function getCleanedCheerioInstance(htmlText: string): cheerio.CheerioAPI 
     return $;
 }
 
-export function preprocessHtmlForOpenAI(htmlText: string): string {
+export async function preprocessHtmlForOpenAI(htmlText: string): Promise<string> {
     const $ = getCleanedCheerioInstance(htmlText);
 
     const structure = {
@@ -176,7 +177,22 @@ export function preprocessHtmlForOpenAI(htmlText: string): string {
         mainContent = $('body');
     }
 
-    const sampleHtml = mainContent.html()?.substring(0, 3000) || htmlText.substring(0, 3000);
+    let sampleHtml = mainContent.html()?.substring(0, 3000) || htmlText.substring(0, 3000);
+    try {
+        sampleHtml = await minify(sampleHtml, {
+            collapseWhitespace: true,
+            removeComments: true,
+            removeEmptyElements: true,
+            removeEmptyAttributes: true,
+            removeRedundantAttributes: true,
+            removeScriptTypeAttributes: true,
+            removeStyleLinkTypeAttributes: true,
+            minifyCSS: true,
+            minifyJS: true,
+        });
+    } catch (error) {
+        logger.error('Error minifying HTML:', getErrorInfo(error));
+    }
 
     return `Structure: ${JSON.stringify(structure, null, 2)}\n\nSample HTML (main content area):\n${sampleHtml}`;
 }

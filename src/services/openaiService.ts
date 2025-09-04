@@ -12,7 +12,7 @@ export class OpenAIService {
     }
 
     async generateParser(url: string, htmlText: string): Promise<string> {
-        const prompt = this.createParserPrompt(url, htmlText);
+        const prompt = await this.createParserPrompt(url, htmlText);
 
         try {
             const completion = await this.client.chat.completions.create({
@@ -21,7 +21,7 @@ export class OpenAIService {
                     {
                         role: 'system',
                         content:
-                            'You are an expert at creating HTML parsers. Generate clean, efficient JavaScript/TypeScript code that extracts relevant content from HTML.',
+                            'You are an expert at creating HTML parsers. Generate clean, efficient JavaScript code that extracts relevant content from HTML.',
                     },
                     {
                         role: 'user',
@@ -46,8 +46,8 @@ export class OpenAIService {
         }
     }
 
-    private createParserPrompt(url: string, htmlText: string): string {
-        const processedHtml = preprocessHtmlForOpenAI(htmlText);
+    private async createParserPrompt(url: string, htmlText: string): Promise<string> {
+        const processedHtml = await preprocessHtmlForOpenAI(htmlText);
 
         return `
 Create a JavaScript function that parses HTML content from the following URL pattern and extracts relevant text content.
