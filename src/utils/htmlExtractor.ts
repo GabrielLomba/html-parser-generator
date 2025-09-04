@@ -42,7 +42,7 @@ export function generateUrlPattern(url: string): string {
             return segment;
         });
 
-        const pattern = `/${patternSegments.join('/')}`;
+        const pattern = patternSegments.length > 0 ? `/${patternSegments.join('/')}` : '';
         return `${urlObj.hostname}${pattern}`;
     } catch (error) {
         logger.error('Error generating URL pattern:', getErrorInfo(error));
@@ -167,7 +167,7 @@ function isLikelyId(urlSegment: string): boolean {
     // This covers: kebab-case, PascalCase, underscore/dot separated segments
     if (
         urlSegment.includes('-') ||
-        /^[A-Z][a-z]+$/.test(urlSegment) ||
+        /^([A-Z][a-z]+)+[A-Z]?$/.test(urlSegment) ||
         urlSegment.includes('_') ||
         urlSegment.includes('.')
     ) {
@@ -182,6 +182,11 @@ function isLikelyId(urlSegment: string): boolean {
         } else if (/^[A-Z][a-z]+$/.test(urlSegment)) {
             // PascalCase: split on capital letters
             words = urlSegment.split(/(?=[A-Z])/);
+
+            // If we only got one word in PascalCase, let's assume it's an ID
+            if (words.length === 1) {
+                return true;
+            }
         }
 
         // Check if all words are English words
