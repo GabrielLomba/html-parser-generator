@@ -40,7 +40,6 @@ export function createRoutes(parserService: ParserService): Router {
                 parserCreatedAt: parser.createdAt,
                 urlPattern: parser.urlPattern,
                 cached: parser.cached,
-                contentLength: scrape.length
             });
         } catch (error) {
             throw error;

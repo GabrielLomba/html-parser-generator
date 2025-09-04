@@ -1,11 +1,14 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import * as cheerio from 'cheerio';
 import express from 'express';
 import { createRoutes } from '../api/routes';
 import { ParserService } from '../services/parserService';
 import { DiskParserStorage } from '../storage/diskParserStorage';
 import { TestConfig, TestResult, TestSuite, TestSuiteResult } from './types';
+import assert from 'assert';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 export class TestRunner {
     private app: express.Application;
@@ -95,6 +98,7 @@ export class TestRunner {
             const parseResponse = await response.json() as any;
             const actual = parseResponse.result;
 
+            assert.equal(parseResponse.urlPattern, testConfig.pattern, 'URL pattern does not match');
             testConfig.verify(actual);
 
             return {

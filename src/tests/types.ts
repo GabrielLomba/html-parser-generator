@@ -1,5 +1,6 @@
 export interface TestConfig {
     url: string;
+    pattern: string;
     testName: string;
     verify: (actual: any) => boolean;
 }
