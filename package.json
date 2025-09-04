@@ -17,6 +17,7 @@
     "lint:fix": "eslint src/**/*.ts --fix",
     "format": "prettier --write src/**/*.ts",
     "format:check": "prettier --check src/**/*.ts",
+    "analyze:patterns": "tsx scripts/analyzeUrlPatterns.ts",
     "prepare": "husky"
   },
   "keywords": [
@@ -34,6 +35,7 @@
     "express": "^4.18.2",
     "html-minifier-terser": "^7.2.0",
     "openai": "^4.20.1",
+    "spellchecker": "^3.7.1",
     "tiktoken": "^1.0.22",
     "winston": "^3.17.0"
   },
@@ -44,6 +46,7 @@
     "@types/html-minifier-terser": "^7.0.2",
     "@types/jest": "^30.0.0",
     "@types/node": "^20.8.0",
+    "@types/spellchecker": "^3.5.2",
     "@typescript-eslint/eslint-plugin": "^8.42.0",
     "@typescript-eslint/parser": "^8.42.0",
     "eslint": "^9.34.0",

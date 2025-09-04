@@ -1,6 +1,7 @@
 import * as cheerio from 'cheerio';
 import { minify } from 'html-minifier-terser';
 import { getErrorInfo, logger } from './logger';
+import * as SpellChecker from 'spellchecker';
 
 const normalizeUrl = (url: string): string => {
     if (url.startsWith('http://') || url.startsWith('https://')) {
@@ -132,19 +133,46 @@ function isLikelyId(segment: string): boolean {
         return false;
     }
 
-    if (/^[a-z-]+$/.test(segment) && segment.includes('-')) {
-        return false;
+    // Check if segment can be split into parts and analyzed
+    // This covers: kebab-case, PascalCase, underscore/dot separated segments
+    if (
+        segment.includes('-') ||
+        /^[A-Z][a-z]+$/.test(segment) ||
+        segment.includes('_') ||
+        segment.includes('.')
+    ) {
+        let words: string[] = [];
+
+        if (segment.includes('-')) {
+            // Kebab-case: split on hyphens
+            words = segment.split('-');
+        } else if (segment.includes('_') || segment.includes('.')) {
+            // Underscore or dot separated: split on both
+            words = segment.split(/[_.]/);
+        } else if (/^[A-Z][a-z]+$/.test(segment)) {
+            // PascalCase: split on capital letters
+            words = segment.split(/(?=[A-Z])/);
+        }
+
+        // Check if all words are English words
+        // If any word is not a valid English word, it's likely an ID
+        const allWordsAreEnglish = words.every(
+            word => !SpellChecker.isMisspelled(word.toLowerCase())
+        );
+
+        // If all words are English, it's not an ID (it's a semantic path)
+        // If any word is not English, it's likely an ID
+        return !allWordsAreEnglish;
     }
 
-    if (/^[A-Z][a-z]+$/.test(segment)) {
-        return true;
-    }
-
-    if (segment.includes('_') || segment.includes('.')) {
-        return true;
-    }
-
+    // Alphanumeric strings of 8+ characters that aren't kebab-case are likely IDs
+    // This catches things like "abc123def" or "user12345" but excludes "user-profile"
     if (/^[a-zA-Z0-9]{8,}$/.test(segment) && !/^[a-z-]+$/.test(segment)) {
+        return true;
+    }
+
+    // If the segment is the same as the lower segment and not a word, it's likely an ID
+    if (segment === lowerSegment && SpellChecker.isMisspelled(segment)) {
         return true;
     }
 
