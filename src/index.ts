@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import * as path from 'path';
 import { ParserService } from './services/parserService';
 import { DiskParserStorage } from './storage/diskParserStorage';
+import { OpenAIService } from './generator/openaiService';
 import { createRoutes } from './api/routes';
 import { ApiError } from './types/ApiError';
 import { logger, getErrorInfo } from './utils/logger';
@@ -25,11 +26,12 @@ if (!openaiApiKey) {
 
 const storageDir = process.env.PARSER_STORAGE_DIR || path.join(process.cwd(), 'tmp', 'parsers');
 const storage = new DiskParserStorage(storageDir);
-const parserService = new ParserService(openaiApiKey, storage);
+const parserGenerator = new OpenAIService(openaiApiKey);
+const parserService = new ParserService(parserGenerator, storage);
 
 app.use('/api', createRoutes(parserService));
 
-app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
+app.use((err: Error, req: express.Request, res: express.Response, _next: express.NextFunction) => {
     logger.error('Unhandled error:', {
         ...getErrorInfo(err),
         url: req.url,

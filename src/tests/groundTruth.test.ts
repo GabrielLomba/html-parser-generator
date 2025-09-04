@@ -5,6 +5,7 @@ import express from 'express';
 import { createRoutes } from '../api/routes';
 import { ParserService } from '../services/parserService';
 import { DiskParserStorage } from '../storage/diskParserStorage';
+import { OpenAIService } from '../generator/openaiService';
 import { ParseResponse, TestConfig, TestResult } from './types';
 import { logger } from '../utils/logger';
 import { Server } from 'http';
@@ -16,7 +17,8 @@ class TestServer {
 
     constructor(openaiApiKey: string) {
         const storage = new DiskParserStorage();
-        const parserService = new ParserService(openaiApiKey, storage);
+        const parserGenerator = new OpenAIService(openaiApiKey);
+        const parserService = new ParserService(parserGenerator, storage);
 
         this.app = express();
         this.app.use(express.json({ limit: '50mb' }));

@@ -1,15 +1,14 @@
-import { ParserRequest, ParserResponse, ParserStorage } from '../types';
-import { OpenAIService } from './openaiService';
+import { ParserGenerator, ParserRequest, ParserResponse, ParserStorage } from '../types';
 import { generateUrlPattern } from '../utils/htmlExtractor';
 import { logger, getErrorInfo } from '../utils/logger';
 
 export class ParserService {
-    private openaiService: OpenAIService;
+    private parserGenerator: ParserGenerator;
     private storage: ParserStorage;
     private ongoingRequests: Map<string, Promise<ParserResponse>> = new Map();
 
-    constructor(openaiApiKey: string, storage: ParserStorage) {
-        this.openaiService = new OpenAIService(openaiApiKey);
+    constructor(parserGenerator: ParserGenerator, storage: ParserStorage) {
+        this.parserGenerator = parserGenerator;
         this.storage = storage;
     }
 
@@ -78,7 +77,7 @@ export class ParserService {
         urlPattern: string
     ): Promise<ParserResponse> {
         try {
-            const parserCode = await this.openaiService.generateParser(url, html);
+            const parserCode = await this.parserGenerator.generateParser(url, html);
 
             const parser = await this.storage.set(urlPattern, parserCode);
 

@@ -1,8 +1,9 @@
 import OpenAI from 'openai';
 import { logger, getErrorInfo } from '../utils/logger';
 import { preprocessHtmlForOpenAI } from '../utils/htmlExtractor';
+import { ParserGenerator } from '../types';
 
-export class OpenAIService {
+export class OpenAIService implements ParserGenerator {
     private client: OpenAI;
 
     constructor(apiKey: string) {

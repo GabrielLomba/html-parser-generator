@@ -23,3 +23,7 @@ export interface ParserStorage {
     getAll(): Promise<StoredParser[]>;
     delete(_urlPattern: string): Promise<boolean>;
 }
+
+export interface ParserGenerator {
+    generateParser(_url: string, _htmlText: string): Promise<string>;
+}
