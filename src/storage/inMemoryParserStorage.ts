@@ -21,11 +21,15 @@ export class InMemoryParserStorage implements ParserStorage {
         return this.parsers.has(urlPattern);
     }
 
-    async getAll(): Promise<StoredParser[]> {
-        return Array.from(this.parsers.values());
+    async getAll(limit: number = 10): Promise<StoredParser[]> {
+        return Array.from(this.parsers.values()).slice(0, limit);
     }
 
     async delete(urlPattern: string): Promise<boolean> {
         return this.parsers.delete(urlPattern);
+    }
+
+    async size(): Promise<number> {
+        return this.parsers.size;
     }
 }

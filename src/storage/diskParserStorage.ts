@@ -105,9 +105,12 @@ export class DiskParserStorage implements ParserStorage {
         }
     }
 
-    async getAll(): Promise<StoredParser[]> {
+    async getAll(limit: number = 10): Promise<StoredParser[]> {
         try {
-            const files = await fsPromises.readdir(this.storageDir);
+            let files = await fsPromises.readdir(this.storageDir);
+            if (limit) {
+                files = files.slice(0, limit);
+            }
             const parsers: StoredParser[] = [];
 
             for (const file of files) {
@@ -152,5 +155,10 @@ export class DiskParserStorage implements ParserStorage {
             });
             return false;
         }
+    }
+
+    async size(): Promise<number> {
+        const files = await fsPromises.readdir(this.storageDir);
+        return files.length;
     }
 }

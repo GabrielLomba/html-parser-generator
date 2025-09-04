@@ -39,10 +39,11 @@ export class ParserService {
     }
 
     async getStats() {
-        const allParsers = await this.storage.getAll();
+        const allParsers = await this.storage.getAll(10);
+        const totalParsers = await this.storage.size();
         const generatorStats = this.parserGenerator.getStats();
         return {
-            totalParsers: allParsers.length,
+            totalParsers,
             parsers: allParsers.map(p => ({
                 urlPattern: p.urlPattern,
                 createdAt: p.createdAt,

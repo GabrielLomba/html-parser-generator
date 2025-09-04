@@ -20,8 +20,9 @@ export interface ParserStorage {
     get(_urlPattern: string): Promise<StoredParser | null>;
     set(_urlPattern: string, _parser: string): Promise<StoredParser>;
     has(_urlPattern: string): Promise<boolean>;
-    getAll(): Promise<StoredParser[]>;
+    getAll(_limit?: number): Promise<StoredParser[]>;
     delete(_urlPattern: string): Promise<boolean>;
+    size(): Promise<number>;
 }
 
 export interface ParserGenerator {
