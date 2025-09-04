@@ -2,12 +2,10 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as cheerio from 'cheerio';
 import express from 'express';
-import FormData from 'form-data';
-import { createRoutes, cleanupIntervals } from '../api/routes';
+import { createRoutes } from '../api/routes';
 import { ParserService } from '../services/parserService';
 import { DiskParserStorage } from '../storage/diskParserStorage';
 import { TestConfig, TestResult, TestSuite, TestSuiteResult } from './types';
-import { IncomingMessage } from 'http';
 
 export class TestRunner {
     private app: express.Application;
@@ -23,7 +21,7 @@ export class TestRunner {
         const parserService = new ParserService(openaiApiKey, storage);
         
         this.app = express();
-        this.app.use(express.json());
+        this.app.use(express.json({ limit: '50mb' }));
         this.app.use('/api', createRoutes(parserService));
     }
 
@@ -41,7 +39,6 @@ export class TestRunner {
             return new Promise((resolve) => {
                 this.server.close(() => {
                     console.log('Test server stopped');
-                    cleanupIntervals();
                     resolve();
                 });
             });
@@ -77,46 +74,25 @@ export class TestRunner {
     private async executeTest(testConfig: TestConfig, testDir: string): Promise<TestResult> {
         try {
             const htmlFilePath = path.join(testDir, 'input.html');
-            const form = new FormData();
-            form.append('url', testConfig.url);
-            form.append('html', fs.createReadStream(htmlFilePath), {
-                filename: 'input.html',
-                contentType: 'text/html',
+            const html = await fs.promises.readFile(htmlFilePath, 'utf8');
+
+            const response = await fetch(`${this.baseUrl}/api/parse`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    shortened_url: testConfig.url,
+                    scrape: html
+                })
             });
 
-            const response = await new Promise<any>((resolve, reject) => {
-                form.submit(`${this.baseUrl}/api/parse`, (err, res) => {
-                    if (err) {
-                        reject(err);
-                        return;
-                    }
-                    
-                    let data = '';
-                    res.on('data', (chunk) => {
-                        data += chunk;
-                    });
-                    
-                    res.on('end', () => {
-                        try {
-                            const parseResponse = JSON.parse(data);
-                            resolve({ ...res, data: parseResponse });
-                        } catch (parseErr) {
-                            reject(new Error(`Failed to parse response: ${parseErr}`));
-                        }
-                    });
-                    
-                    res.on('error', (streamErr) => {
-                        reject(streamErr);
-                    });
-                });
-            });
-
-            if (response.statusCode !== 200) {
-                console.log(`Body: ${response.data}`);
-                throw new Error(`HTTP ${response.statusCode}: ${response.statusMessage}`);
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP ${response.status}: ${errorText}`);
             }
 
-            const parseResponse = response.data;
+            const parseResponse = await response.json() as any;
             const actual = parseResponse.result;
 
             testConfig.verify(actual);
