@@ -1,31 +1,20 @@
+import { describe, test, expect, beforeAll, afterAll } from '@jest/globals';
 import * as fs from 'fs';
 import * as path from 'path';
 import express from 'express';
 import { createRoutes } from '../api/routes';
 import { ParserService } from '../services/parserService';
 import { DiskParserStorage } from '../storage/diskParserStorage';
-import { TestConfig, TestResult, TestSuite, TestSuiteResult } from './types';
+import { ParseResponse, TestConfig, TestResult } from './types';
 import { logger } from '../utils/logger';
-import assert from 'assert';
-import dotenv from 'dotenv';
 import { Server } from 'http';
-import { ParseResponse } from './types';
 
-dotenv.config();
-
-export class TestRunner {
+class TestServer {
     private app: express.Application;
     private server: Server | null = null;
-    private testDataDir: string;
-    private baseUrl: string;
+    private baseUrl: string = 'http://localhost:3001';
 
-    constructor(
-        openaiApiKey: string,
-        testDataDir: string = path.join(process.cwd(), 'src', 'tests', 'data')
-    ) {
-        this.testDataDir = testDataDir;
-        this.baseUrl = 'http://localhost:3001';
-
+    constructor(openaiApiKey: string) {
         const storage = new DiskParserStorage();
         const parserService = new ParserService(openaiApiKey, storage);
 
@@ -34,7 +23,7 @@ export class TestRunner {
         this.app.use('/api', createRoutes(parserService));
     }
 
-    async startServer(): Promise<void> {
+    async start(): Promise<void> {
         return new Promise(resolve => {
             this.server = this.app.listen(3001, () => {
                 logger.info('Test server started on port 3001');
@@ -43,7 +32,7 @@ export class TestRunner {
         });
     }
 
-    async stopServer(): Promise<void> {
+    async stop(): Promise<void> {
         if (this.server) {
             return new Promise(resolve => {
                 this.server?.close(() => {
@@ -54,18 +43,43 @@ export class TestRunner {
         }
     }
 
-    private async loadTestConfig(testDir: string): Promise<TestConfig> {
+    getBaseUrl(): string {
+        return this.baseUrl;
+    }
+}
+
+describe('Ground Truth Tests', () => {
+    let testServer: TestServer;
+    const testDataDir = path.join(process.cwd(), 'src', 'tests', 'data');
+
+    beforeAll(async () => {
+        const openaiApiKey = process.env.OPENAI_API_KEY;
+        if (!openaiApiKey) {
+            throw new Error('OPENAI_API_KEY environment variable is required');
+        }
+
+        testServer = new TestServer(openaiApiKey);
+        await testServer.start();
+    });
+
+    afterAll(async () => {
+        if (testServer) {
+            await testServer.stop();
+        }
+    });
+
+    async function loadTestConfig(testDir: string): Promise<TestConfig> {
         const configPath = path.join(testDir, 'config.js');
         return import(configPath).then(module => module.default);
     }
 
-    private async discoverTestDirectories(): Promise<string[]> {
-        const entries = await fs.promises.readdir(this.testDataDir, { withFileTypes: true });
+    async function discoverTestDirectories(): Promise<string[]> {
+        const entries = await fs.promises.readdir(testDataDir, { withFileTypes: true });
         const testDirs: string[] = [];
 
         for (const entry of entries) {
             if (entry.isDirectory()) {
-                const testDir = path.join(this.testDataDir, entry.name);
+                const testDir = path.join(testDataDir, entry.name);
                 const configPath = path.join(testDir, 'config.js');
 
                 try {
@@ -80,12 +94,12 @@ export class TestRunner {
         return testDirs;
     }
 
-    private async executeTest(testConfig: TestConfig, testDir: string): Promise<TestResult> {
+    async function executeTest(testConfig: TestConfig, testDir: string): Promise<TestResult> {
         try {
             const htmlFilePath = path.join(testDir, 'input.html');
             const html = await fs.promises.readFile(htmlFilePath, 'utf8');
 
-            const response = await fetch(`${this.baseUrl}/api/parse`, {
+            const response = await fetch(`${testServer.getBaseUrl()}/api/parse`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -104,11 +118,7 @@ export class TestRunner {
             const parseResponse = (await response.json()) as ParseResponse;
             const actual = parseResponse.result;
 
-            assert.equal(
-                parseResponse.urlPattern,
-                testConfig.pattern,
-                'URL pattern does not match'
-            );
+            expect(parseResponse.urlPattern).toBe(testConfig.pattern);
             testConfig.verify(actual);
 
             return {
@@ -130,53 +140,55 @@ export class TestRunner {
         }
     }
 
-    async runAllTests(): Promise<TestSuiteResult> {
-        await this.startServer();
-
-        try {
-            const testDirs = await this.discoverTestDirectories();
-            const results: TestResult[] = [];
-
-            for (const testDir of testDirs) {
-                const testConfig = await this.loadTestConfig(testDir);
-                const result = await this.executeTest(testConfig, testDir);
-                results.push(result);
-            }
-
-            const passedTests = results.filter(r => !r.error).length;
-            const failedTests = results.length - passedTests;
-
-            return {
-                totalTests: results.length,
-                passedTests,
-                failedTests,
-                results,
-            };
-        } finally {
-            await this.stopServer();
-        }
-    }
-
-    async runTest(testConfig: TestConfig, testDir: string): Promise<TestResult> {
-        return await this.executeTest(testConfig, testDir);
-    }
-
-    async runTestSuite(testSuite: TestSuite): Promise<TestSuiteResult> {
+    test('should run all ground truth tests', async () => {
+        const testDirs = await discoverTestDirectories();
         const results: TestResult[] = [];
 
-        for (const testConfig of testSuite.tests) {
-            const result = await this.executeTest(testConfig, '');
+        for (const testDir of testDirs) {
+            const testConfig = await loadTestConfig(testDir);
+            const result = await executeTest(testConfig, testDir);
             results.push(result);
         }
 
         const passedTests = results.filter(r => !r.error).length;
         const failedTests = results.length - passedTests;
 
-        return {
+        logger.info('Test Results:', {
             totalTests: results.length,
             passedTests,
             failedTests,
-            results,
-        };
-    }
-}
+            successRate: results.length > 0 ? ((passedTests / results.length) * 100).toFixed(1) : 0,
+        });
+
+        for (const testResult of results) {
+            const status = testResult.error ? '❌ FAIL' : '✅ PASS';
+            logger.info(`${status} - ${testResult.testName}`, {
+                url: testResult.url,
+                error: testResult.error,
+            });
+        }
+
+        expect(failedTests).toBe(0);
+    }, 60000); // 60 second timeout for the entire test suite
+
+    // Individual test cases for better granular reporting
+    test('Wikipedia Prometheus page should parse correctly', async () => {
+        const testDir = path.join(testDataDir, 'wikipedia');
+        const testConfig = await loadTestConfig(testDir);
+        const result = await executeTest(testConfig, testDir);
+
+        expect(result.error).toBeUndefined();
+        expect(result.actual).toBeDefined();
+        expect(result.urlPattern).toBe(testConfig.pattern);
+    }, 30000);
+
+    test('Dot.ca.gov page should parse correctly', async () => {
+        const testDir = path.join(testDataDir, 'dot-ca');
+        const testConfig = await loadTestConfig(testDir);
+        const result = await executeTest(testConfig, testDir);
+
+        expect(result.error).toBeUndefined();
+        expect(result.actual).toBeDefined();
+        expect(result.urlPattern).toBe(testConfig.pattern);
+    }, 30000);
+});

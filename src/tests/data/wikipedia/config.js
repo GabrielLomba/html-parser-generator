@@ -1,4 +1,4 @@
-export default {
+module.exports = {
     testName: "Wikipedia Prometheus Page",
     url: "https://en.wikipedia.org/wiki/Prometheus",
     pattern: "en.wikipedia.org/wiki/{id}",
