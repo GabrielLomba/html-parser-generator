@@ -1,0 +1,20 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Run linting and formatting
+echo "🔍 Running ESLint and Prettier..."
+
+# Run ESLint with auto-fix
+npm run lint:fix
+
+# Run Prettier formatting
+npm run format
+
+# Check if there are any changes after linting and formatting
+if ! git diff --quiet; then
+    echo "📝 Code was automatically formatted. Adding changes to commit..."
+    git add .
+    echo "✅ Formatted code has been added to the commit."
+else
+    echo "✅ Code is already properly formatted."
+fi
