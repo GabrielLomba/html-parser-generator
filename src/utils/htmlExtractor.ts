@@ -150,16 +150,14 @@ function isLikelyId(segment: string): boolean {
     return false;
 }
 
-export function preprocessHtmlForOpenAI(htmlText: string): string {
+export function getCleanedCheerioInstance(htmlText: string): cheerio.CheerioAPI {
     const $ = cheerio.load(htmlText);
-
     $('script, style, noscript, iframe, embed, object, nav, header, footer').remove();
-    $(
-        '[class*="ad"], [class*="sidebar"], [class*="menu"], [class*="nav"], [class*="footer"], [class*="header"]'
-    ).remove();
-    $(
-        '[id*="ad"], [id*="sidebar"], [id*="menu"], [id*="nav"], [id*="footer"], [id*="header"]'
-    ).remove();
+    return $;
+}
+
+export function preprocessHtmlForOpenAI(htmlText: string): string {
+    const $ = getCleanedCheerioInstance(htmlText);
 
     const structure = {
         title: $('title').text().trim(),

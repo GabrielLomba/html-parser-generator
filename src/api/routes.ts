@@ -2,7 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { ParserService } from '../services/parserService';
 import { ApiError } from '../types/ApiError';
 import { logger, getErrorInfo } from '../utils/logger';
-import * as cheerio from 'cheerio';
+import { getCleanedCheerioInstance } from '../utils/htmlExtractor';
 
 const asyncHandler = <T>(
     fn: (_req: Request, _res: Response, _next: NextFunction) => Promise<T>
@@ -10,7 +10,7 @@ const asyncHandler = <T>(
     return (req: Request, res: Response, next: NextFunction) => {
         Promise.resolve(fn(req, res, next)).catch(error => {
             logger.error('Error in route handler:', getErrorInfo(error));
-            next(error); // Pass error to Express error handler
+            next(error);
         });
     };
 };
@@ -36,7 +36,9 @@ export function createRoutes(parserService: ParserService): Router {
             const parser = await parserService.getParser({ url: shortened_url, html: scrape });
 
             const parserFunction = new Function('$', parser.parser);
-            const result = parserFunction(cheerio.load(scrape));
+
+            const $ = getCleanedCheerioInstance(scrape);
+            const result = parserFunction($);
 
             res.json({
                 result,
