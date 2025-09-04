@@ -5,6 +5,7 @@ import { ParserGenerator } from '../types';
 import { countRequestTokens, countTokens } from '../utils/tokenCounter';
 import { TiktokenModel } from 'tiktoken';
 import { Stats } from '../utils/stats';
+import { sanitizeParserCode } from '../utils/sanitization';
 
 const MODEL: TiktokenModel = 'gpt-4';
 
@@ -61,7 +62,7 @@ export class OpenAIService implements ParserGenerator {
                 url,
             });
 
-            return this.sanitizeParserCode(parserCode);
+            return sanitizeParserCode(parserCode);
         } catch (error) {
             logger.error('Error generating parser with OpenAI:', getErrorInfo(error));
             throw new Error(
@@ -94,34 +95,6 @@ Requirements:
 
 Return only the function code, no explanations or markdown formatting. No comments at all. Only the function definition matters.
         `.trim();
-    }
-
-    private sanitizeParserCode(code: string): string {
-        const codeBlockRegex = /```(?:javascript|js|typescript|ts)?\s*\n([\s\S]*?)\n```/;
-        const match = code.match(codeBlockRegex);
-
-        const runnableFunction = match && match[1] ? match[1].trim() : code.trim();
-
-        if (runnableFunction.startsWith('function')) {
-            const functionBodyRegex = /function\s+\w+\s*\([^)]*\)\s*\{([\s\S]*)\}/;
-            const bodyMatch = runnableFunction.match(functionBodyRegex);
-
-            if (bodyMatch && bodyMatch[1]) {
-                return bodyMatch[1].trim();
-            }
-        }
-
-        if (runnableFunction.includes('=>')) {
-            const arrowFunctionRegex =
-                /(?:const|let|var)?\s*\w+\s*=\s*\([^)]*\)\s*=>\s*\{([\s\S]*)\}/;
-            const arrowMatch = runnableFunction.match(arrowFunctionRegex);
-
-            if (arrowMatch && arrowMatch[1]) {
-                return arrowMatch[1].trim();
-            }
-        }
-
-        return runnableFunction;
     }
 
     getStats() {

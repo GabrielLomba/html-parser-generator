@@ -2,6 +2,19 @@ import * as cheerio from 'cheerio';
 import { minify } from 'html-minifier-terser';
 import { getErrorInfo, logger } from './logger';
 import * as SpellChecker from 'spellchecker';
+import { removeWhiteSpace } from './sanitization';
+
+const MAIN_CONTENT_SELECTORS = [
+    'main',
+    'article',
+    '.content',
+    '.post',
+    '.entry',
+    '#content',
+    '#main',
+    '.main-content',
+    '[role="main"]',
+];
 
 const normalizeUrl = (url: string): string => {
     if (url.startsWith('http://') || url.startsWith('https://')) {
@@ -215,12 +228,12 @@ export async function preprocessHtmlForOpenAI(htmlText: string): Promise<string>
         images: $('img[src]').length,
     };
 
-    let mainContent = $('main, article, .content, .post, .entry, #content, #main').first();
+    let mainContent = $(MAIN_CONTENT_SELECTORS.join(',')).first();
     if (mainContent.length === 0) {
         mainContent = $('body');
     }
 
-    let sampleHtml = mainContent.html() || htmlText;
+    let sampleHtml = removeWhiteSpace(mainContent.html() || htmlText);
     try {
         sampleHtml = await minify(sampleHtml, {
             collapseWhitespace: true,
@@ -241,19 +254,7 @@ export async function preprocessHtmlForOpenAI(htmlText: string): Promise<string>
 }
 
 function extractMainContent($: cheerio.CheerioAPI): string {
-    const selectors = [
-        'main',
-        'article',
-        '.content',
-        '.post',
-        '.entry',
-        '#content',
-        '#main',
-        '.main-content',
-        '[role="main"]',
-    ];
-
-    for (const selector of selectors) {
+    for (const selector of MAIN_CONTENT_SELECTORS) {
         const element = $(selector).first();
         if (element.length > 0) {
             return element.text().trim().substring(0, 500);

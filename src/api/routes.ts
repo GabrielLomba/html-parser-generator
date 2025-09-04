@@ -3,6 +3,7 @@ import { ParserService } from '../services/parserService';
 import { ApiError } from '../types/ApiError';
 import { logger, getErrorInfo } from '../utils/logger';
 import { getCleanedCheerioInstance } from '../utils/htmlExtractor';
+import { sanitizeParseResult } from '../utils/sanitization';
 
 const asyncHandler = <T>(
     fn: (_req: Request, _res: Response, _next: NextFunction) => Promise<T>
@@ -38,7 +39,8 @@ export function createRoutes(parserService: ParserService): Router {
             const parserFunction = new Function('$', parser.parser);
 
             const $ = getCleanedCheerioInstance(scrape);
-            const result = parserFunction($);
+            const rawResult = parserFunction($);
+            const result = sanitizeParseResult(rawResult);
 
             res.json({
                 result,
