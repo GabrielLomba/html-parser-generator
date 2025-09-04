@@ -8,12 +8,14 @@ import { TestConfig, TestResult, TestSuite, TestSuiteResult } from './types';
 import { logger } from '../utils/logger';
 import assert from 'assert';
 import dotenv from 'dotenv';
+import { Server } from 'http';
+import { ParseResponse } from './types';
 
 dotenv.config();
 
 export class TestRunner {
     private app: express.Application;
-    private server: any;
+    private server: Server | null = null;
     private testDataDir: string;
     private baseUrl: string;
 
@@ -44,7 +46,7 @@ export class TestRunner {
     async stopServer(): Promise<void> {
         if (this.server) {
             return new Promise(resolve => {
-                this.server.close(() => {
+                this.server?.close(() => {
                     logger.info('Test server stopped');
                     resolve();
                 });
@@ -54,7 +56,7 @@ export class TestRunner {
 
     private async loadTestConfig(testDir: string): Promise<TestConfig> {
         const configPath = path.join(testDir, 'config.js');
-        return require(configPath).default;
+        return import(configPath).then(module => module.default);
     }
 
     private async discoverTestDirectories(): Promise<string[]> {
@@ -99,7 +101,7 @@ export class TestRunner {
                 throw new Error(`HTTP ${response.status}: ${errorText}`);
             }
 
-            const parseResponse = (await response.json()) as any;
+            const parseResponse = (await response.json()) as ParseResponse;
             const actual = parseResponse.result;
 
             assert.equal(

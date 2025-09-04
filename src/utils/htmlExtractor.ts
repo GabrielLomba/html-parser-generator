@@ -1,4 +1,5 @@
 import * as cheerio from 'cheerio';
+import { getErrorInfo, logger } from './logger';
 
 const normalizeUrl = (url: string): string => {
     if (url.startsWith('http://') || url.startsWith('https://')) {
@@ -32,6 +33,7 @@ export function generateUrlPattern(url: string): string {
         const pattern = `/${patternSegments.join('/')}`;
         return `${urlObj.hostname}${pattern}`;
     } catch (error) {
+        logger.error('Error generating URL pattern:', getErrorInfo(error));
         return url;
     }
 }

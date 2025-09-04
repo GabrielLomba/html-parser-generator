@@ -1,9 +1,11 @@
+type Payload = string | (Record<string, unknown> & { error?: string });
+
 export class ApiError extends Error {
     public readonly statusCode: number;
-    public readonly payload: any;
+    public readonly payload: Payload;
 
-    constructor(statusCode: number, payload: any) {
-        super(typeof payload === 'string' ? payload : payload.message || 'API Error');
+    constructor(statusCode: number, payload: Payload) {
+        super(typeof payload === 'string' ? payload : payload.error || 'API Error');
         this.name = 'ApiError';
         this.statusCode = statusCode;
         this.payload = payload;

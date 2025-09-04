@@ -1,9 +1,5 @@
 import { StoredParser, ParserStorage } from '../types';
 
-/**
- * In-memory storage for parsers
- * In a production environment, this would be replaced with a database
- */
 export class InMemoryParserStorage implements ParserStorage {
     private parsers: Map<string, StoredParser> = new Map();
 
@@ -12,12 +8,13 @@ export class InMemoryParserStorage implements ParserStorage {
     }
 
     async set(urlPattern: string, parser: string): Promise<StoredParser> {
-        this.parsers.set(urlPattern, {
+        const storedParser: StoredParser = {
             urlPattern,
             parser,
             createdAt: new Date(),
-        });
-        return this.parsers.get(urlPattern)!;
+        };
+        this.parsers.set(urlPattern, storedParser);
+        return storedParser;
     }
 
     async has(urlPattern: string): Promise<boolean> {
@@ -30,13 +27,5 @@ export class InMemoryParserStorage implements ParserStorage {
 
     async delete(urlPattern: string): Promise<boolean> {
         return this.parsers.delete(urlPattern);
-    }
-
-    clear(): void {
-        this.parsers.clear();
-    }
-
-    size(): number {
-        return this.parsers.size;
     }
 }

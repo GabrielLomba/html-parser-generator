@@ -4,7 +4,9 @@ import { ApiError } from '../types/ApiError';
 import { logger, getErrorInfo } from '../utils/logger';
 import * as cheerio from 'cheerio';
 
-const asyncHandler = <T>(fn: (req: Request, res: Response, next: NextFunction) => Promise<T>) => {
+const asyncHandler = <T>(
+    fn: (_req: Request, _res: Response, _next: NextFunction) => Promise<T>
+) => {
     return (req: Request, res: Response, next: NextFunction) => {
         Promise.resolve(fn(req, res, next)).catch(error => {
             logger.error('Error in route handler:', getErrorInfo(error));
