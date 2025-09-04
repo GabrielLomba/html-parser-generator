@@ -3,7 +3,6 @@ import winston from 'winston';
 const logLevel = process.env.LOG_LEVEL || 'info';
 const isDevelopment = process.env.NODE_ENV !== 'production';
 
-// Create the logger instance
 export const logger = winston.createLogger({
     level: logLevel,
     format: winston.format.combine(
@@ -18,14 +17,12 @@ export const logger = winston.createLogger({
         version: process.env.npm_package_version || '1.0.0',
     },
     transports: [
-        // Console transport with pretty printing for development
         new winston.transports.Console({
             format: winston.format.combine(winston.format.colorize(), winston.format.simple()),
         }),
     ],
 });
 
-// Add file transports for production
 if (!isDevelopment) {
     logger.add(
         new winston.transports.File({
@@ -43,7 +40,6 @@ if (!isDevelopment) {
     );
 }
 
-// Helper function to safely extract error information
 export const getErrorInfo = (error: unknown): { message: string; stack?: string } => {
     if (error instanceof Error) {
         return {
@@ -56,7 +52,6 @@ export const getErrorInfo = (error: unknown): { message: string; stack?: string 
     };
 };
 
-// Create logs directory if it doesn't exist
 if (!isDevelopment) {
     import('fs').then(fs => {
         if (!fs.existsSync('logs')) {
