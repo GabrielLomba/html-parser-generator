@@ -7,11 +7,10 @@
     "ext": "ts,js,json",
     "ignore": [
         "node_modules/**/*",
-        "dist/**/*",
         "tmp/**/*",
         "*.log"
     ],
-    "exec": "node --loader ts-node/esm src/index.ts",
+    "exec": "node dist/index.js",
     "env": {
         "NODE_ENV": "development"
     },
