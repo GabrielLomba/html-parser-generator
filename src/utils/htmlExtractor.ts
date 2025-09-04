@@ -23,10 +23,7 @@ export function generateUrlPattern(url: string): string {
             if (/^[a-f0-9-]{8,}$/.test(segment)) {
                 return '{uuid}';
             }
-            if (segment.length >= 20) {
-                return '{slug}';
-            }
-            if (isLikelyId(segment)) {
+            if (segment.length >= 20 || isLikelyId(segment)) {
                 return '{id}';
             }
             return segment;
@@ -40,8 +37,28 @@ export function generateUrlPattern(url: string): string {
     }
 }
 
-function isLikelyId(segment: string): boolean {
-    if (segment.length < 8) return false;
+function isLikelyEnglishWord(segment: string): boolean {
+    const letterCount = (segment.match(/[a-zA-Z]/g) || []).length;
+
+    if (letterCount / segment.length < 0.7) {
+        return false;
+    }
+
+    return !SpellChecker.isMisspelled(segment.toLowerCase());
+}
+
+function isLikelyId(urlSegment: string): boolean {
+    urlSegment = decodeURIComponent(urlSegment);
+
+    // Check if string contains UTF-8 characters (non-ASCII)
+    // If it does, assume it's an ID (likely encoded content)
+    if (/[^\x20-\x7E]/.test(urlSegment)) {
+        return true;
+    }
+
+    if (urlSegment.length < 8) {
+        return !isLikelyEnglishWord(urlSegment);
+    }
 
     const commonPathWords = [
         'about',
@@ -127,7 +144,7 @@ function isLikelyId(segment: string): boolean {
         'contract',
     ];
 
-    const lowerSegment = segment.toLowerCase();
+    const lowerSegment = urlSegment.toLowerCase();
 
     if (commonPathWords.includes(lowerSegment)) {
         return false;
@@ -136,29 +153,27 @@ function isLikelyId(segment: string): boolean {
     // Check if segment can be split into parts and analyzed
     // This covers: kebab-case, PascalCase, underscore/dot separated segments
     if (
-        segment.includes('-') ||
-        /^[A-Z][a-z]+$/.test(segment) ||
-        segment.includes('_') ||
-        segment.includes('.')
+        urlSegment.includes('-') ||
+        /^[A-Z][a-z]+$/.test(urlSegment) ||
+        urlSegment.includes('_') ||
+        urlSegment.includes('.')
     ) {
         let words: string[] = [];
 
-        if (segment.includes('-')) {
+        if (urlSegment.includes('-')) {
             // Kebab-case: split on hyphens
-            words = segment.split('-');
-        } else if (segment.includes('_') || segment.includes('.')) {
+            words = urlSegment.split('-');
+        } else if (urlSegment.includes('_') || urlSegment.includes('.')) {
             // Underscore or dot separated: split on both
-            words = segment.split(/[_.]/);
-        } else if (/^[A-Z][a-z]+$/.test(segment)) {
+            words = urlSegment.split(/[_.]/);
+        } else if (/^[A-Z][a-z]+$/.test(urlSegment)) {
             // PascalCase: split on capital letters
-            words = segment.split(/(?=[A-Z])/);
+            words = urlSegment.split(/(?=[A-Z])/);
         }
 
         // Check if all words are English words
         // If any word is not a valid English word, it's likely an ID
-        const allWordsAreEnglish = words.every(
-            word => !SpellChecker.isMisspelled(word.toLowerCase())
-        );
+        const allWordsAreEnglish = words.every(word => isLikelyEnglishWord(word));
 
         // If all words are English, it's not an ID (it's a semantic path)
         // If any word is not English, it's likely an ID
@@ -167,12 +182,12 @@ function isLikelyId(segment: string): boolean {
 
     // Alphanumeric strings of 8+ characters that aren't kebab-case are likely IDs
     // This catches things like "abc123def" or "user12345" but excludes "user-profile"
-    if (/^[a-zA-Z0-9]{8,}$/.test(segment) && !/^[a-z-]+$/.test(segment)) {
+    if (/^[a-zA-Z0-9]{8,}$/.test(urlSegment) && !/^[a-z-]+$/.test(urlSegment)) {
         return true;
     }
 
     // If the segment is the same as the lower segment and not a word, it's likely an ID
-    if (segment === lowerSegment && SpellChecker.isMisspelled(segment)) {
+    if (urlSegment === lowerSegment && !isLikelyEnglishWord(urlSegment)) {
         return true;
     }
 

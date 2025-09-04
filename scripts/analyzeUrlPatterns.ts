@@ -60,8 +60,7 @@ class UrlPatternAnalyzer {
                 continue;
             }
         }
-        
-        console.log(`Domain patterns: ${Array.from(this.domainPatterns.entries())}`);
+
         return this.generateAnalysis();
     }
 
