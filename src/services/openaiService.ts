@@ -55,7 +55,9 @@ Create a JavaScript function that parses HTML content from the following URL pat
 URL: ${url}
 
 HTML Structure Analysis:
+\`\`\`html
 ${processedHtml}
+\`\`\`
 
 Requirements:
 1. The function should be named 'parseHtml' and accept a $ argument which is equivalent to cheerio.load(html).
