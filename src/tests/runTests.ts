@@ -17,13 +17,15 @@ async function runTests() {
         console.log(`Total Tests: ${result.totalTests}`);
         console.log(`Passed: ${result.passedTests}`);
         console.log(`Failed: ${result.failedTests}`);
-        console.log(`Success Rate: ${result.totalTests > 0 ? ((result.passedTests / result.totalTests) * 100).toFixed(1) : 0}%\n`);
+        console.log(
+            `Success Rate: ${result.totalTests > 0 ? ((result.passedTests / result.totalTests) * 100).toFixed(1) : 0}%\n`
+        );
 
         for (const testResult of result.results) {
             const status = testResult.error ? '❌ FAIL' : '✅ PASS';
             console.log(`${status} - ${testResult.testName}`);
             console.log(`   URL: ${testResult.url}`);
-            
+
             if (testResult.error) {
                 console.log(`   Error: ${testResult.error}`);
             }

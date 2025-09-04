@@ -43,7 +43,9 @@ export class ParserService {
             };
         } catch (error) {
             console.error('Error generating parser:', error);
-            throw new Error(`Failed to generate parser: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            throw new Error(
+                `Failed to generate parser: ${error instanceof Error ? error.message : 'Unknown error'}`
+            );
         }
     }
 
@@ -57,8 +59,8 @@ export class ParserService {
             totalParsers: allParsers.length,
             parsers: allParsers.map(p => ({
                 urlPattern: p.urlPattern,
-                createdAt: p.createdAt
-            }))
+                createdAt: p.createdAt,
+            })),
         };
     }
 }

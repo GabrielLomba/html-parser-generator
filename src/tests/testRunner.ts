@@ -16,20 +16,23 @@ export class TestRunner {
     private testDataDir: string;
     private baseUrl: string;
 
-    constructor(openaiApiKey: string, testDataDir: string = path.join(process.cwd(), 'src', 'tests', 'data')) {
+    constructor(
+        openaiApiKey: string,
+        testDataDir: string = path.join(process.cwd(), 'src', 'tests', 'data')
+    ) {
         this.testDataDir = testDataDir;
         this.baseUrl = 'http://localhost:3001';
-        
+
         const storage = new DiskParserStorage();
         const parserService = new ParserService(openaiApiKey, storage);
-        
+
         this.app = express();
         this.app.use(express.json({ limit: '50mb' }));
         this.app.use('/api', createRoutes(parserService));
     }
 
     async startServer(): Promise<void> {
-        return new Promise((resolve) => {
+        return new Promise(resolve => {
             this.server = this.app.listen(3001, () => {
                 console.log('Test server started on port 3001');
                 resolve();
@@ -39,7 +42,7 @@ export class TestRunner {
 
     async stopServer(): Promise<void> {
         if (this.server) {
-            return new Promise((resolve) => {
+            return new Promise(resolve => {
                 this.server.close(() => {
                     console.log('Test server stopped');
                     resolve();
@@ -61,7 +64,7 @@ export class TestRunner {
             if (entry.isDirectory()) {
                 const testDir = path.join(this.testDataDir, entry.name);
                 const configPath = path.join(testDir, 'config.js');
-                
+
                 try {
                     await fs.promises.access(configPath);
                     testDirs.push(testDir);
@@ -86,8 +89,8 @@ export class TestRunner {
                 },
                 body: JSON.stringify({
                     shortened_url: testConfig.url,
-                    scrape: html
-                })
+                    scrape: html,
+                }),
             });
 
             if (!response.ok) {
@@ -95,10 +98,14 @@ export class TestRunner {
                 throw new Error(`HTTP ${response.status}: ${errorText}`);
             }
 
-            const parseResponse = await response.json() as any;
+            const parseResponse = (await response.json()) as any;
             const actual = parseResponse.result;
 
-            assert.equal(parseResponse.urlPattern, testConfig.pattern, 'URL pattern does not match');
+            assert.equal(
+                parseResponse.urlPattern,
+                testConfig.pattern,
+                'URL pattern does not match'
+            );
             testConfig.verify(actual);
 
             return {
@@ -106,7 +113,7 @@ export class TestRunner {
                 url: testConfig.url,
                 actual,
                 parser: parseResponse.parser || '',
-                urlPattern: parseResponse.urlPattern || ''
+                urlPattern: parseResponse.urlPattern || '',
             };
         } catch (error) {
             return {
@@ -115,14 +122,14 @@ export class TestRunner {
                 actual: null,
                 error: error instanceof Error ? error.message : 'Unknown error',
                 parser: '',
-                urlPattern: ''
+                urlPattern: '',
             };
         }
     }
 
     async runAllTests(): Promise<TestSuiteResult> {
         await this.startServer();
-        
+
         try {
             const testDirs = await this.discoverTestDirectories();
             const results: TestResult[] = [];
@@ -140,7 +147,7 @@ export class TestRunner {
                 totalTests: results.length,
                 passedTests,
                 failedTests,
-                results
+                results,
             };
         } finally {
             await this.stopServer();
@@ -166,7 +173,7 @@ export class TestRunner {
             totalTests: results.length,
             passedTests,
             failedTests,
-            results
+            results,
         };
     }
 }

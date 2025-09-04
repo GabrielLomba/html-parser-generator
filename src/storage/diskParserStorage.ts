@@ -22,7 +22,9 @@ export class DiskParserStorage implements ParserStorage {
                 await fsPromises.mkdir(this.storageDir, { recursive: true });
             } catch (error) {
                 console.error('Failed to create storage directory:', error);
-                throw new Error(`Cannot create storage directory: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                throw new Error(
+                    `Cannot create storage directory: ${error instanceof Error ? error.message : 'Unknown error'}`
+                );
             }
         }
     }
@@ -32,14 +34,14 @@ export class DiskParserStorage implements ParserStorage {
             .replace(/[^a-zA-Z0-9.-]/g, '_')
             .replace(/_+/g, '_')
             .replace(/^_|_$/g, '');
-        
+
         return path.join(this.storageDir, `${sanitizedPattern}.json`);
     }
 
     async get(urlPattern: string): Promise<StoredParser | null> {
         try {
             const filePath = this.getParserFilePath(urlPattern);
-            
+
             try {
                 await fsPromises.access(filePath);
             } catch {
@@ -61,24 +63,26 @@ export class DiskParserStorage implements ParserStorage {
             const parserData: StoredParser = {
                 urlPattern,
                 parser,
-                createdAt: new Date()
+                createdAt: new Date(),
             };
 
             const filePath = this.getParserFilePath(urlPattern);
             const fileData = JSON.stringify(parserData, null, 2);
-            
+
             await fsPromises.writeFile(filePath, fileData, 'utf8');
             return parserData;
         } catch (error) {
             console.error(`Failed to save parser for pattern ${urlPattern}:`, error);
-            throw new Error(`Cannot save parser: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            throw new Error(
+                `Cannot save parser: ${error instanceof Error ? error.message : 'Unknown error'}`
+            );
         }
     }
 
     async has(urlPattern: string): Promise<boolean> {
         try {
             const filePath = this.getParserFilePath(urlPattern);
-            
+
             try {
                 await fsPromises.access(filePath);
                 return true;

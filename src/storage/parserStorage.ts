@@ -15,7 +15,7 @@ export class InMemoryParserStorage implements ParserStorage {
         this.parsers.set(urlPattern, {
             urlPattern,
             parser,
-            createdAt: new Date()
+            createdAt: new Date(),
         });
         return this.parsers.get(urlPattern)!;
     }

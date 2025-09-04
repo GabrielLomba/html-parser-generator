@@ -6,7 +6,7 @@ export class OpenAIService {
 
     constructor(apiKey: string) {
         this.client = new OpenAI({
-            apiKey: apiKey
+            apiKey,
         });
     }
 
@@ -15,19 +15,20 @@ export class OpenAIService {
 
         try {
             const completion = await this.client.chat.completions.create({
-                model: "gpt-4",
+                model: 'gpt-4',
                 messages: [
                     {
-                        role: "system",
-                        content: "You are an expert at creating HTML parsers. Generate clean, efficient JavaScript/TypeScript code that extracts relevant content from HTML."
+                        role: 'system',
+                        content:
+                            'You are an expert at creating HTML parsers. Generate clean, efficient JavaScript/TypeScript code that extracts relevant content from HTML.',
                     },
                     {
-                        role: "user",
-                        content: prompt
-                    }
+                        role: 'user',
+                        content: prompt,
+                    },
                 ],
                 temperature: 0.1,
-                max_tokens: 2000
+                max_tokens: 2000,
             });
 
             const parserCode = completion.choices[0]?.message?.content;
@@ -38,13 +39,15 @@ export class OpenAIService {
             return this.sanitizeParserCode(parserCode);
         } catch (error) {
             console.error('Error generating parser with OpenAI:', error);
-            throw new Error(`Failed to generate parser: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            throw new Error(
+                `Failed to generate parser: ${error instanceof Error ? error.message : 'Unknown error'}`
+            );
         }
     }
 
     private createParserPrompt(url: string, htmlText: string): string {
         const processedHtml = preprocessHtmlForOpenAI(htmlText);
-        
+
         return `
 Create a JavaScript function that parses HTML content from the following URL pattern and extracts relevant text content.
 
@@ -70,21 +73,22 @@ Return only the function code, no explanations or markdown formatting. No commen
         const codeBlockRegex = /```(?:javascript|js|typescript|ts)?\s*\n([\s\S]*?)\n```/;
         const match = code.match(codeBlockRegex);
 
-        let runnableFunction = match && match[1] ? match[1].trim() : code.trim();
-        
+        const runnableFunction = match && match[1] ? match[1].trim() : code.trim();
+
         if (runnableFunction.startsWith('function')) {
             const functionBodyRegex = /function\s+\w+\s*\([^)]*\)\s*\{([\s\S]*)\}/;
             const bodyMatch = runnableFunction.match(functionBodyRegex);
-            
+
             if (bodyMatch && bodyMatch[1]) {
                 return bodyMatch[1].trim();
             }
         }
-        
+
         if (runnableFunction.includes('=>')) {
-            const arrowFunctionRegex = /(?:const|let|var)?\s*\w+\s*=\s*\([^)]*\)\s*=>\s*\{([\s\S]*)\}/;
+            const arrowFunctionRegex =
+                /(?:const|let|var)?\s*\w+\s*=\s*\([^)]*\)\s*=>\s*\{([\s\S]*)\}/;
             const arrowMatch = runnableFunction.match(arrowFunctionRegex);
-            
+
             if (arrowMatch && arrowMatch[1]) {
                 return arrowMatch[1].trim();
             }
