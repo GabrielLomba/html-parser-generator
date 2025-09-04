@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { StoredParser, ParserStorage } from '../types';
+import { logger, getErrorInfo } from '../utils/logger';
 
 const fsPromises = fs.promises;
 
@@ -10,7 +11,7 @@ export class DiskParserStorage implements ParserStorage {
     constructor(storageDir: string = path.join(process.cwd(), 'tmp', 'parsers')) {
         this.storageDir = storageDir;
         this.ensureStorageDirectory().catch(error => {
-            console.error('Failed to initialize storage directory:', error);
+            logger.error('Failed to initialize storage directory:', getErrorInfo(error));
         });
     }
 
@@ -21,7 +22,7 @@ export class DiskParserStorage implements ParserStorage {
             try {
                 await fsPromises.mkdir(this.storageDir, { recursive: true });
             } catch (error) {
-                console.error('Failed to create storage directory:', error);
+                logger.error('Failed to create storage directory:', getErrorInfo(error));
                 throw new Error(
                     `Cannot create storage directory: ${error instanceof Error ? error.message : 'Unknown error'}`
                 );
@@ -53,7 +54,10 @@ export class DiskParserStorage implements ParserStorage {
             parser.createdAt = new Date(parser.createdAt);
             return parser;
         } catch (error) {
-            console.error(`Failed to load parser for pattern ${urlPattern}:`, error);
+            logger.error('Failed to load parser for pattern', {
+                urlPattern,
+                ...getErrorInfo(error),
+            });
             return null;
         }
     }
@@ -72,7 +76,10 @@ export class DiskParserStorage implements ParserStorage {
             await fsPromises.writeFile(filePath, fileData, 'utf8');
             return parserData;
         } catch (error) {
-            console.error(`Failed to save parser for pattern ${urlPattern}:`, error);
+            logger.error('Failed to save parser for pattern', {
+                urlPattern,
+                ...getErrorInfo(error),
+            });
             throw new Error(
                 `Cannot save parser: ${error instanceof Error ? error.message : 'Unknown error'}`
             );
@@ -90,7 +97,10 @@ export class DiskParserStorage implements ParserStorage {
                 return false;
             }
         } catch (error) {
-            console.error(`Failed to check if parser exists for pattern ${urlPattern}:`, error);
+            logger.error('Failed to check if parser exists for pattern', {
+                urlPattern,
+                ...getErrorInfo(error),
+            });
             return false;
         }
     }
@@ -109,14 +119,17 @@ export class DiskParserStorage implements ParserStorage {
                         parser.createdAt = new Date(parser.createdAt);
                         parsers.push(parser);
                     } catch (error) {
-                        console.warn(`Failed to load parser from ${file}:`, error);
+                        logger.warn('Failed to load parser from file', {
+                            file,
+                            ...getErrorInfo(error),
+                        });
                     }
                 }
             }
 
             return parsers;
         } catch (error) {
-            console.error('Failed to load all parsers:', error);
+            logger.error('Failed to load all parsers:', getErrorInfo(error));
             return [];
         }
     }
@@ -133,7 +146,10 @@ export class DiskParserStorage implements ParserStorage {
                 return false;
             }
         } catch (error) {
-            console.error(`Failed to remove parser for pattern ${urlPattern}:`, error);
+            logger.error('Failed to remove parser for pattern', {
+                urlPattern,
+                ...getErrorInfo(error),
+            });
             return false;
         }
     }

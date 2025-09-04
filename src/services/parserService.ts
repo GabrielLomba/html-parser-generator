@@ -1,6 +1,7 @@
 import { ParserRequest, ParserResponse, ParserStorage } from '../types';
 import { OpenAIService } from './openaiService';
 import { generateUrlPattern } from '../utils/htmlExtractor';
+import { logger, getErrorInfo } from '../utils/logger';
 
 export class ParserService {
     private openaiService: OpenAIService;
@@ -42,7 +43,7 @@ export class ParserService {
                 urlPattern,
             };
         } catch (error) {
-            console.error('Error generating parser:', error);
+            logger.error('Error generating parser:', getErrorInfo(error));
             throw new Error(
                 `Failed to generate parser: ${error instanceof Error ? error.message : 'Unknown error'}`
             );

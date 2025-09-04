@@ -5,6 +5,8 @@ import * as path from 'path';
 import { ParserService } from './services/parserService';
 import { DiskParserStorage } from './storage/diskParserStorage';
 import { createRoutes } from './api/routes';
+import { ApiError } from './types/ApiError';
+import { logger, getErrorInfo } from './utils/logger';
 
 dotenv.config();
 
@@ -17,7 +19,7 @@ app.use(express.urlencoded({ extended: true }));
 
 const openaiApiKey = process.env.OPENAI_API_KEY;
 if (!openaiApiKey) {
-    console.error('Error: OPENAI_API_KEY environment variable is required');
+    logger.error('OPENAI_API_KEY environment variable is required');
     process.exit(1);
 }
 
@@ -28,7 +30,16 @@ const parserService = new ParserService(openaiApiKey, storage);
 app.use('/api', createRoutes(parserService));
 
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
-    console.error('Unhandled error:', err);
+    logger.error('Unhandled error:', { 
+        ...getErrorInfo(err),
+        url: req.url,
+        method: req.method
+    });
+    
+    if (err instanceof ApiError) {
+        return res.status(err.statusCode).json(err.payload);
+    }
+    
     res.status(500).json({
         error: 'Internal server error',
         message: err.message
@@ -43,17 +54,19 @@ app.use('*', (req, res) => {
 });
 
 app.listen(port, () => {
-    console.log(`🚀 HTML Parser Generator Microservice running on port ${port}`);
-    console.log(`📊 Health check: http://localhost:${port}/api/health`);
-    console.log(`📝 API documentation: http://localhost:${port}/`);
+    logger.info('HTML Parser Generator Microservice started', { 
+        port,
+        healthCheck: `http://localhost:${port}/api/health`,
+        documentation: `http://localhost:${port}/`
+    });
 });
 
 process.on('SIGINT', () => {
-    console.log('\n🛑 Shutting down gracefully...');
+    logger.info('Received SIGINT, shutting down gracefully...');
     process.exit(0);
 });
 
 process.on('SIGTERM', () => {
-    console.log('\n🛑 Shutting down gracefully...');
+    logger.info('Received SIGTERM, shutting down gracefully...');
     process.exit(0);
 });

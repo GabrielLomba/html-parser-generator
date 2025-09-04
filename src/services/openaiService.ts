@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import { logger, getErrorInfo } from '../utils/logger';
 import { preprocessHtmlForOpenAI } from '../utils/htmlExtractor';
 
 export class OpenAIService {
@@ -38,7 +39,7 @@ export class OpenAIService {
 
             return this.sanitizeParserCode(parserCode);
         } catch (error) {
-            console.error('Error generating parser with OpenAI:', error);
+            logger.error('Error generating parser with OpenAI:', getErrorInfo(error));
             throw new Error(
                 `Failed to generate parser: ${error instanceof Error ? error.message : 'Unknown error'}`
             );

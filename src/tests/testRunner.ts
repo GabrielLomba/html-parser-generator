@@ -5,6 +5,7 @@ import { createRoutes } from '../api/routes';
 import { ParserService } from '../services/parserService';
 import { DiskParserStorage } from '../storage/diskParserStorage';
 import { TestConfig, TestResult, TestSuite, TestSuiteResult } from './types';
+import { logger } from '../utils/logger';
 import assert from 'assert';
 import dotenv from 'dotenv';
 
@@ -34,7 +35,7 @@ export class TestRunner {
     async startServer(): Promise<void> {
         return new Promise(resolve => {
             this.server = this.app.listen(3001, () => {
-                console.log('Test server started on port 3001');
+                logger.info('Test server started on port 3001');
                 resolve();
             });
         });
@@ -44,7 +45,7 @@ export class TestRunner {
         if (this.server) {
             return new Promise(resolve => {
                 this.server.close(() => {
-                    console.log('Test server stopped');
+                    logger.info('Test server stopped');
                     resolve();
                 });
             });
@@ -69,7 +70,7 @@ export class TestRunner {
                     await fs.promises.access(configPath);
                     testDirs.push(testDir);
                 } catch {
-                    console.warn(`Skipping ${entry.name}: missing config.js`);
+                    logger.warn(`Skipping ${entry.name}: missing config.js`);
                 }
             }
         }
