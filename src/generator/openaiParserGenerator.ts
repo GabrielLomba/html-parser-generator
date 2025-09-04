@@ -4,16 +4,19 @@ import { preprocessHtmlForOpenAI } from '../utils/htmlExtractor';
 import { ParserGenerator } from '../types';
 import { countRequestTokens, countTokens } from '../utils/tokenCounter';
 import { TiktokenModel } from 'tiktoken';
+import { Stats } from '../utils/stats';
 
 const MODEL: TiktokenModel = 'gpt-4';
 
 export class OpenAIService implements ParserGenerator {
     private client: OpenAI;
+    private stats: Stats;
 
     constructor(apiKey: string) {
         this.client = new OpenAI({
             apiKey,
         });
+        this.stats = new Stats();
     }
 
     async generateParser(url: string, htmlText: string): Promise<string> {
@@ -48,6 +51,8 @@ export class OpenAIService implements ParserGenerator {
 
             const outputTokens = countTokens(parserCode, MODEL);
             const totalTokens = inputTokens + outputTokens;
+
+            this.stats.addRequest(inputTokens, outputTokens);
 
             logger.info('OpenAI parser generation token count', {
                 inputTokens,
@@ -117,5 +122,9 @@ Return only the function code, no explanations or markdown formatting. No commen
         }
 
         return runnableFunction;
+    }
+
+    getStats() {
+        return this.stats.getStats();
     }
 }

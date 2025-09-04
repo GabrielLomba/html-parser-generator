@@ -26,4 +26,5 @@ export interface ParserStorage {
 
 export interface ParserGenerator {
     generateParser(_url: string, _htmlText: string): Promise<string>;
+    getStats(): Record<string, string | number | Record<string, string | number>>;
 }
