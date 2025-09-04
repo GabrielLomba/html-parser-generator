@@ -9,7 +9,7 @@
     "start": "node dist/index.js",
     "dev": "nodemon",
     "watch": "tsc --watch",
-    "test": "ts-node src/tests/runTests.ts",
+    "test": "node --loader ts-node/esm --experimental-specifier-resolution=node src/tests/runTests.ts",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
     "format": "prettier --write src/**/*.ts",
