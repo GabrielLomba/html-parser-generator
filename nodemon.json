@@ -11,7 +11,7 @@
         "tmp/**/*",
         "*.log"
     ],
-    "exec": "ts-node src/index.ts",
+    "exec": "node --loader ts-node/esm src/index.ts",
     "env": {
         "NODE_ENV": "development"
     },
