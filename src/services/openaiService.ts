@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import { preprocessHtmlForOpenAI } from '../utils/htmlExtractor';
 
 export class OpenAIService {
     private client: OpenAI;
@@ -42,22 +43,24 @@ export class OpenAIService {
     }
 
     private createParserPrompt(url: string, htmlText: string): string {
+        const processedHtml = preprocessHtmlForOpenAI(htmlText);
+        
         return `
 Create a JavaScript function that parses HTML content from the following URL pattern and extracts relevant text content.
 
 URL: ${url}
 
-Sample HTML content (first 2000 characters):
-${htmlText.substring(0, 2000)}
+HTML Structure Analysis:
+${processedHtml}
 
 Requirements:
 1. The function should be named 'parseHtml' and accept a $ argument which is equivalent to cheerio.load(html).
 2. Extract only relevant text content, ignoring navigation, ads, scripts, styles, and other non-content elements
 3. Use selectors as specific as possible to retrieve the most relevant text content, excluding irrelevant text content next to it
-3. Return a clean object with extracted data
-4. Use modern JavaScript syntax
-5. Include proper error handling but do not swallow errors. If the parser encountered something unexpected, throw an error.
-6. The function should be self-contained and not require external dependencies beyond the cheerio instance passed in as a parameter.
+4. Return a clean object with extracted data
+5. Use modern JavaScript syntax
+6. Include proper error handling but do not swallow errors. If the parser encountered something unexpected, throw an error.
+7. The function should be self-contained and not require external dependencies beyond the cheerio instance passed in as a parameter.
 
 Return only the function code, no explanations or markdown formatting. No comments at all. Only the function definition matters.
         `.trim();
@@ -74,12 +77,10 @@ Return only the function code, no explanations or markdown formatting. No commen
             const bodyMatch = runnableFunction.match(functionBodyRegex);
             
             if (bodyMatch && bodyMatch[1]) {
-                // Return the function body content
                 return bodyMatch[1].trim();
             }
         }
         
-        // Handle arrow functions
         if (runnableFunction.includes('=>')) {
             const arrowFunctionRegex = /(?:const|let|var)?\s*\w+\s*=\s*\([^)]*\)\s*=>\s*\{([\s\S]*)\}/;
             const arrowMatch = runnableFunction.match(arrowFunctionRegex);
