@@ -62,12 +62,16 @@ describe('generateUrlPattern', () => {
 
     describe('UUID pattern generation', () => {
         test('should replace UUID-like segments with {uuid}', () => {
-            const result = generateUrlPattern('https://example.com/users/123e4567-e89b-12d3-a456-426614174000');
+            const result = generateUrlPattern(
+                'https://example.com/users/123e4567-e89b-12d3-a456-426614174000'
+            );
             expect(result).toBe('example.com/users/{uuid}');
         });
 
         test('should replace UUID without hyphens', () => {
-            const result = generateUrlPattern('https://example.com/users/123e4567e89b12d3a456426614174000');
+            const result = generateUrlPattern(
+                'https://example.com/users/123e4567e89b12d3a456426614174000'
+            );
             expect(result).toBe('example.com/users/{uuid}');
         });
     });
@@ -176,7 +180,9 @@ describe('generateUrlPattern', () => {
         });
 
         test('should handle news article URLs', () => {
-            const result = generateUrlPattern('https://news.example.com/articles/breaking-news-story');
+            const result = generateUrlPattern(
+                'https://news.example.com/articles/breaking-news-story'
+            );
             expect(result).toBe('news.example.com/articles/breaking-news-story');
         });
 
