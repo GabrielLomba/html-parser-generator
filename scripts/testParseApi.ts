@@ -149,7 +149,7 @@ class ParseApiTester {
                     error: errorData.error,
                     statusCode: response.status,
                 });
-                console.log(`❌ Request ${requestNumber}: ${response.status} - ${errorData.error}`);
+                console.log(`❌ Request ${requestNumber}: ${response.status} - ${errorData.error} (${entry.shortened_url})`);
             } else {
                 const data: ApiResponse = await response.json();
                 if (JSON.stringify(data.result || '').length < 200)

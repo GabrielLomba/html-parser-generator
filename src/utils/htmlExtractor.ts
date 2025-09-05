@@ -234,22 +234,18 @@ export async function preprocessHtmlForOpenAI(
 ): Promise<{ structure: HtmlStructure; sampleHtml: string }> {
     const $: cheerio.CheerioAPI = getCleanedCheerioInstance(htmlText);
 
+    const mainContent = extractMainContent($);
     const structure: HtmlStructure = {
         title: $('title').text().trim(),
         headings: $('h1, h2, h3')
             .map((i, el) => $(el).text().trim())
             .get()
             .slice(0, 10),
-        mainContent: extractMainContent($),
+        mainContent: mainContent.text().trim().substring(0, 500),
         forms: $('form').length,
         links: $('a[href]').length,
         images: $('img[src]').length,
     };
-
-    let mainContent = $(MAIN_CONTENT_SELECTORS.join(',')).first();
-    if (mainContent.length === 0) {
-        mainContent = $('body');
-    }
 
     let sampleHtml = removeWhiteSpace(mainContent.html() || htmlText);
     try {
@@ -275,15 +271,26 @@ export async function preprocessHtmlForOpenAI(
     return { structure, sampleHtml: sampleHtml.substring(0, MAX_SAMPLE_HTML_LENGTH) };
 }
 
-function extractMainContent($: cheerio.CheerioAPI): string {
+function extractMainContent($: cheerio.CheerioAPI): cheerio.Cheerio<any> {
+    const headerWithMeta = $('head')
+        .filter((_, headerElement) => {
+            const $header = $(headerElement);
+            return $header.find('meta[name], meta[property]').length > 0;
+        })
+        .first();
+
+    if (headerWithMeta.length > 0) {
+        return headerWithMeta;
+    }
+
     for (const selector of MAIN_CONTENT_SELECTORS) {
         const element = $(selector).first();
         if (element.length > 0) {
-            return element.text().trim().substring(0, 500);
+            return element;
         }
     }
 
-    return $('body').text().trim().substring(0, 500);
+    return $('body');
 }
 
 function removeUnecessaryAttributes(html: string): string {
