@@ -8,8 +8,12 @@ A TypeScript microservice that generates HTML parsers using OpenAI's API. The se
 - 💾 Intelligent caching based on URL patterns
 - 🧹 Automatic HTML content cleaning and text extraction
 - 🚀 RESTful API with multiple endpoints
-- 📊 Statistics and monitoring capabilities
-- 🧪 Parser testing functionality
+- 📊 Statistics and monitoring capabilities with cost tracking
+- 🔄 Concurrent request deduplication for efficiency
+- 💰 Token usage tracking and cost estimation
+- 📝 Enhanced logging with structured output
+- 🧪 Parser testing and validation
+- 🗂️ Disk-based persistent storage with indexing
 
 ## Setup
 
@@ -47,34 +51,47 @@ A TypeScript microservice that generates HTML parsers using OpenAI's API. The se
 
 ## API Endpoints
 
-### GET `/`
-Returns service information and available endpoints.
-
 ### GET `/api/health`
 Health check endpoint.
-
-### POST `/api/getParser`
-Generates or retrieves a parser for the given URL and HTML.
-
-**Request Body:**
-```json
-{
-    "url": "https://example.com/article/123",
-    "html": "<html>...</html>"
-}
-```
 
 **Response:**
 ```json
 {
-    "parser": "function parseHtml(html) { ... }",
-    "cached": false,
-    "urlPattern": "example.com/article/{id}"
+    "status": "healthy",
+    "timestamp": "2024-01-01T00:00:00.000Z"
+}
+```
+
+### POST `/api/parse`
+Parses HTML content using AI-generated parsers and returns extracted content.
+
+**Request Body:**
+```json
+{
+    "shortened_url": "https://example.com/article/123",
+    "scrape": "<html>...</html>"
+}
+```
+
+**Query Parameters:**
+- `no_cache` (optional): Set to `true` to bypass cache and generate a new parser
+
+**Response:**
+```json
+{
+    "result": {
+        "title": "Article Title",
+        "content": "Extracted content...",
+        "author": "Author Name"
+    },
+    "parserCreatedAt": "2024-01-01T00:00:00.000Z",
+    "urlPattern": "example.com/article/{id}",
+    "cached": false
 }
 ```
 
 ### GET `/api/stats`
-Returns statistics about stored parsers.
+Returns statistics about stored parsers and AI usage.
 
 **Response:**
 ```json
@@ -85,19 +102,17 @@ Returns statistics about stored parsers.
             "urlPattern": "example.com/article/{id}",
             "createdAt": "2024-01-01T00:00:00.000Z"
         }
-    ]
-}
-```
-
-### GET `/api/storage-stats`
-Returns storage system statistics (disk usage, file count, etc.).
-
-**Response:**
-```json
-{
-    "totalFiles": 5,
-    "totalSize": 1024000,
-    "storageDir": "/path/to/tmp/parsers"
+    ],
+    "generatorStats": {
+        "totalRequests": 10,
+        "averageInputTokens": 1500,
+        "averageOutputTokens": 800,
+        "costEstimate": {
+            "inputCost": 0.045,
+            "outputCost": 0.048,
+            "totalCost": 0.093
+        }
+    }
 }
 ```
 
@@ -112,29 +127,25 @@ Deletes a specific parser by URL pattern.
 }
 ```
 
-### POST `/api/testParser`
-Generates a parser and tests it with provided HTML.
-
-**Request Body:**
-```json
-{
-    "url": "https://example.com/article/123",
-    "html": "<html>...</html>",
-    "testHtml": "<html>...</html>"
-}
-```
-
 ## Usage Examples
 
 ### Using curl:
 
 ```bash
-# Get a parser
-curl -X POST http://localhost:3000/api/getParser \
+# Parse HTML content
+curl -X POST http://localhost:3000/api/parse \
   -H "Content-Type: application/json" \
   -d '{
-    "url": "https://news.ycombinator.com/item?id=123456",
-    "html": "<html><body><h1>Article Title</h1><p>Content here...</p></body></html>"
+    "shortened_url": "https://news.ycombinator.com/item?id=123456",
+    "scrape": "<html><body><h1>Article Title</h1><p>Content here...</p></body></html>"
+  }'
+
+# Parse with no cache (force new parser generation)
+curl -X POST "http://localhost:3000/api/parse?no_cache=true" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "shortened_url": "https://example.com/article/123",
+    "scrape": "<html>...</html>"
   }'
 
 # Check service health
@@ -142,37 +153,64 @@ curl http://localhost:3000/api/health
 
 # Get statistics
 curl http://localhost:3000/api/stats
+
+# Delete a parser
+curl -X DELETE "http://localhost:3000/api/parser/example.com%2Farticle%2F%7Bid%7D"
 ```
 
 ### Using JavaScript/TypeScript:
 
 ```typescript
-const response = await fetch('http://localhost:3000/api/getParser', {
+// Parse HTML content
+const response = await fetch('http://localhost:3000/api/parse', {
     method: 'POST',
     headers: {
         'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-        url: 'https://example.com/article/123',
-        html: '<html>...</html>'
+        shortened_url: 'https://example.com/article/123',
+        scrape: '<html>...</html>'
     })
 });
 
 const result = await response.json();
-console.log('Generated parser:', result.parser);
+console.log('Extracted content:', result.result);
+console.log('Parser cached:', result.cached);
+
+// Parse with no cache
+const responseNoCache = await fetch('http://localhost:3000/api/parse?no_cache=true', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+        shortened_url: 'https://example.com/article/123',
+        scrape: '<html>...</html>'
+    })
+});
+
+// Get statistics
+const statsResponse = await fetch('http://localhost:3000/api/stats');
+const stats = await statsResponse.json();
+console.log('Total parsers:', stats.totalParsers);
+console.log('AI usage cost:', stats.generatorStats.costEstimate.totalCost);
 ```
 
 ## How It Works
 
 1. **URL Pattern Generation**: The service analyzes the URL structure and creates a pattern for caching (e.g., `example.com/article/{id}`).
 
-2. **HTML Text Extraction**: Uses Cheerio to extract relevant text content, removing scripts, styles, ads, and navigation elements.
+2. **HTML Preprocessing**: Uses Cheerio to clean and extract relevant content, removing scripts, styles, ads, and navigation elements. The HTML is minified and structured for optimal AI processing.
 
-3. **Parser Generation**: If no cached parser exists, OpenAI GPT-4 generates a custom parser function based on the URL and HTML content.
+3. **AI Parser Generation**: If no cached parser exists, OpenAI GPT-4 generates a custom parser function based on the URL and HTML content. The system uses intelligent prompting to create robust, error-handling parsers.
 
-4. **Persistent Storage**: Generated parsers are saved to disk as JSON files in the configured storage directory, with an index file for fast lookups.
+4. **Content Extraction**: The generated parser is executed immediately to extract structured content from the provided HTML, returning clean, sanitized results.
 
-5. **Content Focus**: The system focuses on extracting meaningful content while filtering out noise like advertisements and navigation elements.
+5. **Persistent Storage**: Generated parsers are saved to disk as JSON files in the configured storage directory, with an index file for fast lookups.
+
+6. **Token Tracking**: The system tracks OpenAI API usage, providing cost estimates and performance metrics for monitoring and optimization.
+
+7. **Concurrent Request Handling**: Multiple requests for the same URL pattern are deduplicated to prevent redundant AI calls and improve efficiency.
 
 ## Storage System
 
@@ -196,21 +234,79 @@ tmp/parsers/
 
 - **Build**: `npm run build`
 - **Development with auto-reload**: `npm run dev`
-- **Watch mode**: `npm run watch`
+- **Watch mode**: `npm run build:watch`
+- **Testing**: `npm test` or `npm run test:watch`
+- **Test coverage**: `npm run test:coverage`
+- **Linting**: `npm run lint` or `npm run lint:fix`
+- **Formatting**: `npm run format` or `npm run format:check`
+
+### Available Scripts
+
+- **`npm run analyze:patterns`**: Analyze URL patterns from test data
+- **`npm run test:api`**: Test the API with real data from JSONL files
+- **`npm run test:ci`**: Run tests in CI mode with coverage
 
 The development mode uses nodemon to automatically restart the server when you make changes to TypeScript, JavaScript, or JSON files.
+
+## Testing
+
+The project includes comprehensive testing capabilities:
+
+- **Unit Tests**: Test individual components and utilities
+- **Integration Tests**: Test API endpoints and service interactions
+- **Ground Truth Tests**: Validate parser accuracy against known good data
+- **API Testing**: Automated testing with real-world data from JSONL files
+
+### Test Data
+
+The project includes test data for various websites:
+- Wikipedia articles
+- Teacher's Pay Teachers products
+- Government websites (dot.ca)
+- And more in the `src/tests/data/` directory
+
+### Running Tests
+
+```bash
+# Run all tests
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run tests with coverage
+npm run test:coverage
+
+# Test API with real data
+npm run test:api
+
+# Analyze URL patterns from test data
+npm run analyze:patterns
+```
 
 ## Architecture
 
 ```
 src/
-├── api/           # Express routes and API handlers
-├── services/      # Business logic services
-├── storage/       # Data storage implementations
-├── utils/         # Utility functions
-├── types.ts       # TypeScript type definitions
-└── index.ts       # Application entry point
+├── api/                    # Express routes and API handlers
+├── generator/              # AI parser generation (OpenAI integration)
+├── services/               # Business logic services
+├── storage/                # Data storage implementations (disk, in-memory)
+├── tests/                  # Test suites and test data
+├── utils/                  # Utility functions (logging, HTML processing, token counting)
+├── types/                  # TypeScript type definitions and error handling
+├── types.ts               # Main type definitions
+└── index.ts               # Application entry point
 ```
+
+### Key Components
+
+- **ParserService**: Core business logic for parser management and caching
+- **OpenAIService**: Handles AI parser generation with token tracking and cost estimation
+- **DiskParserStorage**: Persistent storage with file-based indexing
+- **HTML Extractor**: Content cleaning and preprocessing utilities
+- **Logger**: Structured logging with Winston
+- **Token Counter**: OpenAI API usage tracking and cost calculation
 
 ## Environment Variables
 
