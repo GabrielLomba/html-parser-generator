@@ -34,7 +34,10 @@ export function createRoutes(parserService: ParserService): Router {
                 });
             }
 
-            const parser = await parserService.getParser({ url: shortened_url, html: scrape });
+            const parser = await parserService.getParser(
+                { url: shortened_url, html: scrape },
+                { no_cache: req.query.no_cache === 'true' }
+            );
 
             const parserFunction = new Function('$', parser.parser);
 

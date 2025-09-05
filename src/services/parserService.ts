@@ -12,7 +12,10 @@ export class ParserService {
         this.storage = storage;
     }
 
-    async getParser(request: ParserRequest): Promise<ParserResponse> {
+    async getParser(
+        request: ParserRequest,
+        options: { no_cache?: boolean } = {}
+    ): Promise<ParserResponse> {
         const { url, html } = request;
 
         if (!url || !html) {
@@ -21,7 +24,7 @@ export class ParserService {
 
         const urlPattern = generateUrlPattern(url);
 
-        const existingParser = await this.storage.get(urlPattern);
+        const existingParser = options.no_cache ? null : await this.storage.get(urlPattern);
         if (existingParser) {
             return {
                 parser: existingParser.parser,
