@@ -16,6 +16,8 @@ const MAIN_CONTENT_SELECTORS = [
     '[role="main"]',
 ];
 
+const MAX_SAMPLE_HTML_LENGTH = 3000;
+
 const normalizeUrl = (url: string): string => {
     if (url.startsWith('http://') || url.startsWith('https://')) {
         return url;
@@ -212,16 +214,27 @@ function isLikelyId(urlSegment: string): boolean {
     return false;
 }
 
+interface HtmlStructure {
+    title: string;
+    headings: string[];
+    mainContent: string;
+    forms: number;
+    links: number;
+    images: number;
+}
+
 export function getCleanedCheerioInstance(htmlText: string): cheerio.CheerioAPI {
     const $ = cheerio.load(htmlText);
     $('script, style, noscript, iframe, embed, object, nav, header, footer').remove();
     return $;
 }
 
-export async function preprocessHtmlForOpenAI(htmlText: string): Promise<string> {
-    const $ = getCleanedCheerioInstance(htmlText);
+export async function preprocessHtmlForOpenAI(
+    htmlText: string
+): Promise<{ structure: HtmlStructure; sampleHtml: string }> {
+    const $: cheerio.CheerioAPI = getCleanedCheerioInstance(htmlText);
 
-    const structure = {
+    const structure: HtmlStructure = {
         title: $('title').text().trim(),
         headings: $('h1, h2, h3')
             .map((i, el) => $(el).text().trim())
@@ -255,7 +268,11 @@ export async function preprocessHtmlForOpenAI(htmlText: string): Promise<string>
         logger.error('Error minifying HTML:', getErrorInfo(error));
     }
 
-    return `Structure: ${JSON.stringify(structure, null, 2)}\n\nSample HTML (main content area):\n${sampleHtml.substring(0, 3000)}`;
+    if (sampleHtml.length > MAX_SAMPLE_HTML_LENGTH) {
+        sampleHtml = removeUnecessaryAttributes(sampleHtml);
+    }
+
+    return { structure, sampleHtml: sampleHtml.substring(0, MAX_SAMPLE_HTML_LENGTH) };
 }
 
 function extractMainContent($: cheerio.CheerioAPI): string {
@@ -267,4 +284,90 @@ function extractMainContent($: cheerio.CheerioAPI): string {
     }
 
     return $('body').text().trim().substring(0, 500);
+}
+
+function removeUnecessaryAttributes(html: string): string {
+    const $ = cheerio.load(html);
+
+    $('*').each((_, element) => {
+        const $el = $(element);
+        if (element.type !== 'tag') return;
+        const attributes = element.attribs || {};
+        const attributeNames = Object.keys(attributes);
+
+        if (attributeNames.length === 0) return;
+
+        if (attributes.id) {
+            Object.keys(attributes).forEach(attr => $el.removeAttr(attr));
+            $el.attr('id', attributes.id);
+            return;
+        }
+
+        if (attributes['data-test-id']) {
+            Object.keys(attributes).forEach(attr => $el.removeAttr(attr));
+            $el.attr('data-test-id', attributes['data-test-id']);
+            return;
+        }
+
+        if (attributes.class) {
+            const classes = attributes.class.split(/\s+/).filter((c: string) => c.trim());
+            if (classes.length > 0) {
+                // Find the most unique class (longest or most specific)
+                const mostUniqueClass = classes.reduce((a: string, b: string) =>
+                    a.length > b.length ||
+                    (a.length === b.length && a.includes('-') && !b.includes('-'))
+                        ? a
+                        : b
+                );
+                // Remove all attributes first
+                Object.keys(attributes).forEach(attr => $el.removeAttr(attr));
+                $el.attr('class', mostUniqueClass);
+                return;
+            }
+        }
+
+        const identifyingAttrs = [
+            'name',
+            'data-name',
+            'data-id',
+            'data-value',
+            'data-label',
+            'data-cy',
+            'data-test',
+            'data-qa',
+            'data-automation',
+            'aria-label',
+            'aria-labelledby',
+            'for',
+            'type',
+            'value',
+        ];
+
+        let bestAttr = null;
+        let bestScore = 0;
+
+        for (const attrName of identifyingAttrs) {
+            if (attributes[attrName]) {
+                const value = attributes[attrName];
+                // Score based on length and specificity
+                let score = value.length;
+                if (attrName.startsWith('data-')) score += 10; // Prefer data attributes
+                if (attrName.includes('test') || attrName.includes('cy') || attrName.includes('qa'))
+                    score += 5; // Prefer test attributes
+                if (value.includes('-') || value.includes('_')) score += 3; // Prefer kebab/snake case
+
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestAttr = { name: attrName, value };
+                }
+            }
+        }
+
+        if (bestAttr) {
+            Object.keys(attributes).forEach(attr => $el.removeAttr(attr));
+            $el.attr(bestAttr.name, bestAttr.value);
+        }
+    });
+
+    return $.html();
 }

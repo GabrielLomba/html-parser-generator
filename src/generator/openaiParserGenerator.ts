@@ -72,7 +72,7 @@ export class OpenAIService implements ParserGenerator {
     }
 
     private async createParserPrompt(url: string, htmlText: string): Promise<string> {
-        const processedHtml = await preprocessHtmlForOpenAI(htmlText);
+        const { structure, sampleHtml } = await preprocessHtmlForOpenAI(htmlText);
 
         return `
 Create a JavaScript function that parses HTML content from the following URL pattern and extracts relevant text content.
@@ -80,8 +80,11 @@ Create a JavaScript function that parses HTML content from the following URL pat
 URL: ${url}
 
 HTML Structure Analysis:
+Structure: ${JSON.stringify(structure, null, 2)}
+    
+Sample HTML (main content area):
 \`\`\`html
-${processedHtml}
+${sampleHtml}
 \`\`\`
 
 Requirements:
@@ -93,7 +96,7 @@ Requirements:
 6. Include proper error handling but do not swallow errors. If the parser encountered something unexpected, throw an error.
 7. The function should be self-contained and not require external dependencies beyond the cheerio instance passed in as a parameter.
 
-Return only the function code, no explanations or markdown formatting. No comments at all. Only the function definition matters.
+Return only the function code, no explanations or markdown formatting.
         `.trim();
     }
 

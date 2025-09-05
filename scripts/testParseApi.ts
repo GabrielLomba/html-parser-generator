@@ -152,7 +152,8 @@ class ParseApiTester {
                 console.log(`❌ Request ${requestNumber}: ${response.status} - ${errorData.error}`);
             } else {
                 const data: ApiResponse = await response.json();
-                console.log(`🔍 Request ${entry.shortened_url}: ${JSON.stringify(data.result, null, 2)}`);
+                if (JSON.stringify(data.result || '').length < 200)
+                    console.log(`🔍 Request ${entry.shortened_url}: ${JSON.stringify(data, null, 2)}`);
                 this.recordResult({
                     url: entry.shortened_url,
                     success: true,
